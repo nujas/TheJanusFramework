@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "MontageUtilityComponent.h"
+#include "Animation/MontageUtilityComponent.h"
 
 // Sets default values for this component's properties
 UMontageUtilityComponent::UMontageUtilityComponent()
