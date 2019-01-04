@@ -27,4 +27,8 @@ class IPlatformInfoInterface
 public:
 	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Get Current Platform")
 	ESupportedPlatform GetCurrentPlatform() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintImplementableEvent, Category = "Set Current Platform")
+	void SetCurrentPlatform(ESupportedPlatform newPlatform);
+
 };

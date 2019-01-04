@@ -2,10 +2,13 @@
 
 #pragma once
 
+
+#include "InputCoreTypes.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+
 #include "CoreMinimal.h"
 
 #include "Engine/Texture2D.h"
-
 
 #include "Engine/DataTable.h"
 #include "Blueprint/BlueprintSupport.h"
@@ -48,3 +51,13 @@ struct FPlatformInputTexture : public FTableRowBase
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Config")
 	TMap<ESupportedPlatform, UTexture2D*> PlatformTextureMap;
 };
+//
+//UCLASS(BlueprintType)
+//class NUJASCORE_API UPlatformUtility : public UBlueprintFunctionLibrary
+//{
+//	GENERATED_BODY()
+//
+//public:
+//	UFUNCTION(BlueprintCallable, Category = "Platform Utility")
+//	static ESupportedPlatform GetPlatformFromKey(FKey key);
+//};
