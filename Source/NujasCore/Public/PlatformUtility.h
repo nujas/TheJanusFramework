@@ -35,6 +35,9 @@ enum class ECommonInput : uint8
 	Shield           UMETA(DisplayName = "Shield"),
 	LightAttack          UMETA(DisplayName = "LightAttack"),
 	HeavyAttack          UMETA(DisplayName = "HeavyAttack"),
+	QuickTurn          UMETA(DisplayName = "QuickTurn"),
+	Pause          UMETA(DisplayName = "Pause"),
+	Restart          UMETA(DisplayName = "Restart"),
 };
 
 USTRUCT(BlueprintType)
