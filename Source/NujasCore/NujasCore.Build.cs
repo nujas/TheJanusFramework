@@ -36,7 +36,8 @@ public class NujasCore : ModuleRules
 			new string[]
 			{
 				"CoreUObject",
-				"Engine",
+                "InputCore",
+                "Engine",
 				"Slate",
 				"SlateCore",
 				// ... add private dependencies that you statically link with here ...	
