@@ -23,6 +23,11 @@
 			"Name": "NujasAnimation",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasControl",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }
