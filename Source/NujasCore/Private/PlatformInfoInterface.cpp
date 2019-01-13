@@ -1,4 +1,4 @@
-// Copyright 2018 The Janus Project | 2034 Complex LLC. All Rights Reserved.
+// Copyright 2018-2019 The Janus Project | 2034 Complex LLC. All Rights Reserved.
 
 #include "PlatformInfoInterface.h"
 
