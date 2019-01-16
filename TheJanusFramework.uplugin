@@ -25,7 +25,7 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "NujasControl",
+			"Name": "NujasController",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
 		}
