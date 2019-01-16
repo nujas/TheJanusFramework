@@ -1,4 +1,4 @@
-// Copyright 2018 The Janus Project | 2034 Complex LLC. All Rights Reserved.
+// Copyright 2018-2019 The Janus Project | 2034 Complex LLC. All Rights Reserved.
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include "DynamicCameraComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class NUJASCONTROL_API UDynamicCameraComponent : public UActorComponent
+class NUJASCONTROLLER_API UDynamicCameraComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
