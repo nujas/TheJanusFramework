@@ -1,0 +1,89 @@
+{
+	"name": "nujasgen",
+	"displayName": "NujasGenerator",
+	"publisher": "2034Complex",
+	"description": "Generator for The Janus Framework",
+	"version": "0.2.0",
+	"license": "UNLICENSED",
+	"private": true,
+	"engines": {
+		"vscode": "^1.30.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://gitlab.com/januslab/TheJanusFramework"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onCommand:extension.newModule",
+		"onCommand:extension.renameModule"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "NujasGen Configuration",
+			"properties": {
+				"nujasgen.templateModule": {
+					"type": "string",
+					"default": "NujasZ",
+					"description": "The template module used to make new one."
+				},
+				"nujasgen.namespace": {
+					"type": "string",
+					"default": "Nujas",
+					"description": "The namespace of each module in the current UE4 plugin."
+				},
+				"nujasgen.pluginFile": {
+					"type": "string",
+					"default": "TheJanusFramework.uplugin",
+					"description": "The name of the UE4 plugin file."
+				}
+			}
+		},	
+		"commands": [
+			{
+				"command": "extension.newModule",
+				"title": "NujasGen: Generate New Plugin Module"
+			},
+			{
+				"command": "extension.renameModule",
+				"title": "NujasGen: Rename Existing Plugin Module"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "extension.newModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				},
+				{
+					"command": "extension.renameModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "yarn run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"postinstall": "node ./node_modules/vscode/bin/install",
+		"test": "yarn run compile && node ./node_modules/vscode/bin/test"
+	},
+	"devDependencies": {
+		"@types/fs-extra": "^5.0.4",
+		"@types/mocha": "^2.2.42",
+		"@types/node": "^8.10.25",
+		"tslint": "^5.8.0",
+		"typescript": "^3.1.4",
+		"vscode": "^1.1.25"
+	},
+	"dependencies": {
+		"change-case": "^3.1.0",
+		"fs-extra": "^7.0.1",
+		"replace-in-file": "^3.4.3"
+	}
+}
