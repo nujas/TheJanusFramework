@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 0,
-	"VersionName": "0.2.0",
+	"VersionName": "0.3.0",
 	"FriendlyName": "TheJanusFramework",
 	"Description": "An Unreal Engine powered framework used to create open world action RPG",
 	"Category": "Framework",

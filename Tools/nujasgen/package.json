@@ -3,7 +3,7 @@
 	"displayName": "NujasGenerator",
 	"publisher": "2034Complex",
 	"description": "Generator for The Janus Framework",
-	"version": "0.2.0",
+	"version": "0.5.0",
 	"license": "UNLICENSED",
 	"private": true,
 	"engines": {
@@ -18,10 +18,50 @@
 	],
 	"activationEvents": [
 		"onCommand:extension.newModule",
-		"onCommand:extension.renameModule"
+		"onCommand:extension.renameModule",
+		"onCommand:extension.duplicateModule",
+		"onCommand:extension.deleteModule"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
+		"commands": [
+			{
+				"command": "extension.newModule",
+				"title": "NujasGen: Generate New Plugin Module"
+			},
+			{
+				"command": "extension.renameModule",
+				"title": "NujasGen: Rename Existing Plugin Module"
+			},
+			{
+				"command": "extension.duplicateModule",
+				"title": "NujasGen: Duplicate / Make a copy of an Existing Plugin Module"
+			},
+			{
+				"command": "extension.deleteModule",
+				"title": "NujasGen: Delete / Remove an Existing Plugin Module"
+			}
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "extension.newModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				},
+				{
+					"command": "extension.renameModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				},
+				{
+					"command": "extension.duplicateModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				},
+				{
+					"command": "extension.deleteModule",
+					"when": "resourceFilename == TheJanusFramework.uplugin"
+				}
+			]
+		},
 		"configuration": {
 			"type": "object",
 			"title": "NujasGen Configuration",
@@ -42,28 +82,6 @@
 					"description": "The name of the UE4 plugin file."
 				}
 			}
-		},	
-		"commands": [
-			{
-				"command": "extension.newModule",
-				"title": "NujasGen: Generate New Plugin Module"
-			},
-			{
-				"command": "extension.renameModule",
-				"title": "NujasGen: Rename Existing Plugin Module"
-			}
-		],
-		"menus": {
-			"commandPalette": [
-				{
-					"command": "extension.newModule",
-					"when": "resourceFilename == TheJanusFramework.uplugin"
-				},
-				{
-					"command": "extension.renameModule",
-					"when": "resourceFilename == TheJanusFramework.uplugin"
-				}
-			]
 		}
 	},
 	"scripts": {
