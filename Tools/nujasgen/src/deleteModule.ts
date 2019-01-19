@@ -1,31 +1,23 @@
 // Copyright 2018-2019 The Janus Project | 2034 Complex LLC. All Rights Reserved.
 
-import {
-	move,
-	readJson
-} from 'fs-extra';
-
 import * as vscode from 'vscode';
 
 import {
+	readJson,
+	remove
+} from 'fs-extra';
+
+import {
 	getConfiguration,
-	getModuleIndex,
 	getWorkingPaths,
-	inputModuleName,
 	pickExistingModule,
-	checkModuleExist,
-	createModule,
+	getModuleIndex,
 	prepareModule
 } from './_utilities';
 
-export default (): vscode.Disposable => vscode.commands.registerCommand('extension.renameModule', async () => {
+export default (): vscode.Disposable => vscode.commands.registerCommand('extension.deleteModule', async () => {
 	try {
-
 		const config = getConfiguration();
-
-		const {
-			namespace
-		} = config;
 
 		const workingPaths = await getWorkingPaths(config);
 
@@ -42,20 +34,16 @@ export default (): vscode.Disposable => vscode.commands.registerCommand('extensi
 			pluginModules
 		} = await pickExistingModule(pluginFileJSON, sourcePath);
 
-		const [dstModuleName, dstModuleSourcePath] = await inputModuleName(namespace, sourcePath);
-
-		checkModuleExist(pluginModules, dstModuleName);
-
-		vscode.window.showWarningMessage(`Renaming ${srcModuleName} to ${dstModuleName} . . . 🎁`);
+		vscode.window.showWarningMessage(`Deleting ${srcModuleName} . . . 🎁`);
 
 		const srcModuleIndex = await getModuleIndex(pluginModules, srcModuleName);
-		pluginFileJSON.Modules[srcModuleIndex].Name = dstModuleName;
 
-		await prepareModule(move, pluginFilePath, pluginFileJSON, [srcModuleSourcePath, dstModuleSourcePath]);
-		
-		await createModule(srcModuleName, dstModuleName, dstModuleSourcePath);
+		pluginFileJSON.Modules.splice(srcModuleIndex, 1);
+
+		await prepareModule(remove, pluginFilePath, pluginFileJSON, [srcModuleSourcePath]);
 
 		vscode.window.showInformationMessage(`Success ! ! ! 🎉`);
+
 	} catch (error) {
 		vscode.window.showErrorMessage(error.message);
 	}

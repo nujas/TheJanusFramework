@@ -6,6 +6,8 @@ NujasGen is a tool to generate module for the Janus Framework. It also aids with
 
 1. Creating new framework module
 1. Rename existing module
+1. Duplicate existing module
+1. Remove existing module
 
 ## Requirements
 
@@ -25,20 +27,6 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
-### 0.0.1
-
-Initialize base tool
-
-### 0.1.0
-
-Added module creation feature
-
-### 0.2.0
-
-Refactor tool to use VSCode configuration
-
-
+See CHANGELOG.md
 
 -----------------------------------------------------------------------------------------------------------
