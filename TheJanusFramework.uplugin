@@ -28,6 +28,11 @@
 			"Name": "NujasController",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasInventory",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }

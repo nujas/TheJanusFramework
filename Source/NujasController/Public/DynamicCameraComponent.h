@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 
+#include "Components/ActorComponent.h"
+
 #include "DynamicCameraComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
