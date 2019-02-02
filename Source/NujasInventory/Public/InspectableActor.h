@@ -3,15 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
+#include "BasicUsableObject.h"
 #include "InspectableActor.generated.h"
 
 class UDialogueWave;
 class FText;
 
 UCLASS()
-class NUJASCORE_API AInspectableActor : public AActor
+class NUJASINVENTORY_API AInspectableActor : public ABasicUsableObject
 {
 	GENERATED_BODY()
 
