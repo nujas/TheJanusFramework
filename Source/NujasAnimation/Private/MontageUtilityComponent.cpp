@@ -15,23 +15,20 @@ UMontageUtilityComponent::UMontageUtilityComponent()
 	// ...
 }
 
-
 // Called when the game starts
 void UMontageUtilityComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	owner = Cast<ACharacter>(GetOwner());
-	ownerAnimInstance = owner->GetMesh()->GetAnimInstance();
-	ownerMovement = owner->GetCharacterMovement();
+	Owner = Cast<ACharacter>(GetOwner());
+	OwnerAnimInstance = Owner->GetMesh()->GetAnimInstance();
+	OwnerMovement = Owner->GetCharacterMovement();
 
 	// ...
-
 }
 
-
 // Called every frame
-void UMontageUtilityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UMontageUtilityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -40,34 +37,33 @@ void UMontageUtilityComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 
 float UMontageUtilityComponent::GetCurrentMontageTime()
 {
-	if (!owner->GetMesh() || ownerAnimInstance == nullptr)
+	if (!Owner->GetMesh() || OwnerAnimInstance == nullptr)
 	{
 		return -1.f;
 	}
-	return ownerAnimInstance->Montage_GetPosition(owner->GetCurrentMontage());
+	return OwnerAnimInstance->Montage_GetPosition(Owner->GetCurrentMontage());
 }
 
 float UMontageUtilityComponent::GetCurrentMontagePlayRate()
 {
-	if (!owner->GetMesh() || ownerAnimInstance == nullptr)
+	if (!Owner->GetMesh() || OwnerAnimInstance == nullptr)
 	{
 		return -1.f;
 	}
-	return ownerAnimInstance->Montage_GetPlayRate(owner->GetCurrentMontage());
+	return OwnerAnimInstance->Montage_GetPlayRate(Owner->GetCurrentMontage());
 }
 
 void UMontageUtilityComponent::SetCurrentMontagePlayRate(float rate)
 {
-	ownerAnimInstance->Montage_SetPlayRate(owner->GetCurrentMontage(), rate);
+	OwnerAnimInstance->Montage_SetPlayRate(Owner->GetCurrentMontage(), rate);
 }
 
 void UMontageUtilityComponent::EnableRotationOverride()
 {
-	ownerMovement->bAllowPhysicsRotationDuringAnimRootMotion = true;
+	OwnerMovement->bAllowPhysicsRotationDuringAnimRootMotion = true;
 }
 
 void UMontageUtilityComponent::DisableRotationOverride()
 {
-	ownerMovement->bAllowPhysicsRotationDuringAnimRootMotion = false;
+	OwnerMovement->bAllowPhysicsRotationDuringAnimRootMotion = false;
 }
-
