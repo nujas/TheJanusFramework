@@ -25,22 +25,17 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 {
 	if (ChracterMovementComponent)
 	{
-		if (!FMath::IsNearlyZero(VerticalInput, 0.01f) || !FMath::IsNearlyZero(HorizontalInput, 0.01f))
-		{
-			ChracterMovementComponent->bUseControllerDesiredRotation = true;
-		}
-		else
-		{
-			ChracterMovementComponent->bUseControllerDesiredRotation = false;
-		}
+		ChracterMovementComponent->bUseControllerDesiredRotation =
+			!FMath::IsNearlyZero(VerticalInput, 0.01f) ||
+			!FMath::IsNearlyZero(HorizontalInput, 0.01f);
 	}
 	else
 	{
 		UE_LOG
 		(
-			LogTemp, 
+			LogTemp,
 			Error,
-			TEXT("The Owner's movement component could not be accessed in %s"), 
+			TEXT("The Owner's movement component could not be accessed in %s"),
 			*this->GetName()
 		);
 	}
@@ -48,14 +43,14 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 
 bool UCharacterAnimationUtilityComponent::IsCharacterMoving()
 {
-	if(CharacterOwner)
-		return CharacterOwner->GetVelocity().IsNearlyZero(0.01f) ? false : true;
+	if (CharacterOwner)
+		return !CharacterOwner->GetVelocity().IsNearlyZero(0.01f);
 	return false;
 }
 
 bool UCharacterAnimationUtilityComponent::IsThereMovementInput()
 {
 	if (ChracterMovementComponent)
-		return ChracterMovementComponent->GetLastInputVector().IsNearlyZero(0.001f) ? false : true;
+		return !ChracterMovementComponent->GetLastInputVector().IsNearlyZero(0.001f);
 	return false;
 }
