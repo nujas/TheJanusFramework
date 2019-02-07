@@ -12,41 +12,39 @@
 
 #include "MontageUtilityComponent.generated.h"
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class NUJASANIMATION_API UMontageUtilityComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-	ACharacter * owner;
-	UAnimInstance * ownerAnimInstance;
-	UCharacterMovementComponent * ownerMovement;
+	ACharacter *Owner;
+	UAnimInstance *OwnerAnimInstance;
+	UCharacterMovementComponent *OwnerMovement;
 
-public:	
+  public:
 	// Sets default values for this component's properties
 	UMontageUtilityComponent();
 
-protected:
+  protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
-public:	
+  public:
 	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Montage Utility")
-		float GetCurrentMontageTime();
+	float GetCurrentMontageTime();
 
 	UFUNCTION(BlueprintCallable, Category = "Montage Utility")
-		float GetCurrentMontagePlayRate();
+	float GetCurrentMontagePlayRate();
 
 	UFUNCTION(BlueprintCallable, Category = "Montage Utility")
-		void SetCurrentMontagePlayRate(float rate);
+	void SetCurrentMontagePlayRate(float rate);
 
 	UFUNCTION(BlueprintCallable, Category = "Montage Utility")
-		void EnableRotationOverride();
+	void EnableRotationOverride();
 
 	UFUNCTION(BlueprintCallable, Category = "Montage Utility")
-		void DisableRotationOverride();
-
-	
+	void DisableRotationOverride();
 };
