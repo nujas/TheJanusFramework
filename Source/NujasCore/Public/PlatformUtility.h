@@ -42,6 +42,15 @@ enum class ECommonInput : uint8
 	Restart          UMETA(DisplayName = "Restart"),
 };
 
+
+UENUM(BlueprintType)        //"BlueprintType" is essential specifier
+enum class EIconAnimation : uint8
+{
+	Default     UMETA(DisplayName = "Default"),
+	FadeIn      UMETA(DisplayName = "FadeIn"),
+	FadeOut         UMETA(DisplayName = "FadeOut")
+};
+
 USTRUCT(BlueprintType)
 struct FPlatformInputTexture : public FTableRowBase
 {
