@@ -21,9 +21,14 @@ struct FAnimationUtilData
 	float FallSpeed;
 	float LeanInAir;
 	float InAirTime;
+	// TODO: Make this openly editable
+	float JumpVelocity = 100.0f;
 
 	//Cardinal Direction Args
 	float RotationOffset;
+
+	bool bCharacterIsMoving;
+	bool bReceivingPlayerInput;
 
 	// TODO: Make Cardinal Direction Enum
 	// TODO: Make Movement Direction Enum
@@ -53,15 +58,9 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
-	/**
-	 * Constraint the character rotation to always face the direction of the camera.
-	 * Disables the rotation feature if the player controller supplies 0 for both inputs.
-	 *
-	 * @param VerticalInput			 The forward/backward float coming from the controller (W/S, Left Stick up and down)
-	 * @param HorizontalInput		 The left/right float coming from the controller (A/D, Left Stick right left)
-	 */
+
 	UFUNCTION(BlueprintCallable, Category = "Character Animation Utility")
-	void UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput);
+	void UpdateForwardBasedAnimationSystem(float VerticalInput, float HorizontalInput);
 
 	/**
 	 * Determine if character is moving.
@@ -76,4 +75,20 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	 */
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
 	bool IsThereMovementInput();
+
+	/**
+	 * Constraint the character rotation to always face the direction of the camera.
+	 * Disables the rotation feature if the player controller supplies 0 for both inputs.
+	 *
+	 * @param VerticalInput			 The forward/backward float coming from the controller (W/S, Left Stick up and down)
+	 * @param HorizontalInput		 The left/right float coming from the controller (A/D, Left Stick right left)
+	 */
+	void UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput);
+
+	void UpdateAnimationData();
+
+	void UpdateInAirData();
+
+	void SetCurrentSpeed();
+	void SetCurrentDirection();
 };
