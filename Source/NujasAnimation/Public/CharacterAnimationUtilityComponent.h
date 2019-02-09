@@ -9,7 +9,23 @@
 class ACharacter;
 class UCharacterMovementComponent;
 
-USTRUCT()
+UENUM(BlueprintType)
+enum class ECardinalDirection: uint8
+{
+	North			UMETA(DisplayName = "North"),
+	East			UMETA(DisplayName = "East"),
+	West			UMETA(DisplayName = "West"),
+	South			UMETA(DisplayName = "South")
+};
+
+UENUM(BlueprintType)
+enum class EMovementDirection: uint8
+{
+	Forward			UMETA(DisplayName = "Forward"),
+	Backward		UMETA(DisplayName = "Backward")
+};
+
+USTRUCT(BlueprintType)
 struct FAnimationUtilData
 {
 	GENERATED_BODY()
@@ -21,17 +37,19 @@ struct FAnimationUtilData
 	float FallSpeed;
 	float LeanInAir;
 	float InAirTime;
+
 	// TODO: Make this openly editable
 	float JumpVelocity = 100.0f;
-
-	//Cardinal Direction Args
-	float RotationOffset;
 
 	bool bCharacterIsMoving;
 	bool bReceivingPlayerInput;
 
-	// TODO: Make Cardinal Direction Enum
-	// TODO: Make Movement Direction Enum
+	FRotator VelocityRotator;
+
+	ECardinalDirection CardinalDirection = ECardinalDirection::North;
+	EMovementDirection MovementDirection = EMovementDirection::Forward;
+
+	FVector4 MovementDirectionConstraints; // Only for Forward / Backward
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -45,6 +63,13 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	ACharacter *CharacterOwner;
 	UPROPERTY(VisibleDefaultsOnly)
 	UCharacterMovementComponent *ChracterMovementComponent;
+
+	void UpdateAnimationData();
+	void UpdateInAirData();
+	void SetCardinalEnum();
+	void SetDirectionEnum();
+	void SetCurrentSpeed();
+	void SetCurrentDirection();
 
   public:
 	// Sets default values for this component's properties
@@ -85,10 +110,8 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	 */
 	void UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput);
 
-	void UpdateAnimationData();
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
+	FAnimationUtilData GetAnimationUtilData() const;
 
-	void UpdateInAirData();
-
-	void SetCurrentSpeed();
-	void SetCurrentDirection();
+	static bool IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool RangeSelect);
 };
