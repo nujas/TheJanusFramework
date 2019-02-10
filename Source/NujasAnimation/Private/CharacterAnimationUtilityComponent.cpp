@@ -71,6 +71,8 @@ void UCharacterAnimationUtilityComponent::UpdateAnimationData()
 	SetCurrentSpeed();
 	SetCurrentDirection();
 	UpdateInAirData();
+	UpdateCharacterLeanAcceleration();
+	UpdateCharacterLeanRotation();
 	SetCardinalEnum();
 	SetDirectionEnum();
 }
@@ -111,21 +113,63 @@ void UCharacterAnimationUtilityComponent::UpdateInAirData()
 	}
 }
 
+void UCharacterAnimationUtilityComponent::UpdateCharacterLeanRotation()
+{
+	float DeltaTime = FApp::GetDeltaTime();
+	float Yaw = AnimationUtilData.Direction / DeltaTime;
+	float Speed = AnimationUtilData.MovementSpeed;
+	float LeanRotation = AnimationUtilData.LeanRotation;
+	Yaw = UKismetMathLibrary::FClamp(Yaw, -200.f, 200.f); // Magic
+	Yaw = UKismetMathLibrary::MapRangeClamped(Yaw, -200.f, 200.f, -.2f, .2f); // Magic
+	Speed = UKismetMathLibrary::MapRangeClamped(Speed, 165.f, 375.f, 0.f, 1.f); // Magic
+	Yaw *= Speed;
+	AnimationUtilData.LeanRotation = UKismetMathLibrary::FInterpTo(LeanRotation, Yaw, DeltaTime, 8.f);
+}
+
+void UCharacterAnimationUtilityComponent::UpdateCharacterLeanAcceleration()
+{
+	// TODO: Probs not AccVector is supposed to be used here
+	if (ChracterMovementComponent)
+	{
+		float MaxAcc;
+		float NegativeBrakingDecWalking;
+		float AccClamped;
+		float DeltaTime = FApp::GetDeltaTime();
+		FVector AccVector = ChracterMovementComponent->GetCurrentAcceleration();
+		float AccSpeed = AccVector.Size2D();
+		float MovementSpeed = AnimationUtilData.MovementSpeed;
+		float LeanAcceleration = AnimationUtilData.LeanAcceleration;
+		if(AccSpeed < 0.f)
+		{
+			NegativeBrakingDecWalking = -1 * ChracterMovementComponent->BrakingDecelerationWalking;
+			AccClamped = UKismetMathLibrary::MapRangeClamped(AccSpeed, 0.f, NegativeBrakingDecWalking, 0.f, -.2f);
+		}
+		else
+		{
+			MaxAcc = ChracterMovementComponent->GetMaxAcceleration();
+			AccClamped = UKismetMathLibrary::MapRangeClamped(AccSpeed, 0.f, MaxAcc, 0.f, .2f);
+		}
+		MovementSpeed = UKismetMathLibrary::MapRangeClamped(MovementSpeed, 165.f, 375.f, 0.f, 1.f); // Magic
+		AccClamped *= MovementSpeed;
+		AnimationUtilData.LeanAcceleration = UKismetMathLibrary::FInterpTo(LeanAcceleration, AccClamped, DeltaTime, 8.f);
+	}
+}
+
 void UCharacterAnimationUtilityComponent::SetCardinalEnum()
 {
 	if(IsCharacterMoving())
 	{
-		// TODO: Add the magic numbers to the AnimationUtilData and make them openly editable
+		FCardinalDirectionConstraints CDConstraints = AnimationUtilData.CardinalDirectionConstraints;
 		float LocalDirection = AnimationUtilData.Direction;
 		ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
 		ECardinalDirection FinalCardinalDirection = ECardinalDirection::North;
-		bool Pass = IsFloatInDualRange(LocalDirection, FVector4(130.f, 180.f, -180.f, -130.f), LocalDirection > 0.0f);
+		bool Pass = IsFloatInDualRange(LocalDirection, CDConstraints.EastConstraints, LocalDirection > 0.0f);
 		FinalCardinalDirection = Pass ? ECardinalDirection::South : ECardinalDirection::North;
-		Pass = IsFloatInDualRange(LocalDirection, FVector4(-140.f, -40.f, -130.f, 50.f), CurrentCardinalDirection == ECardinalDirection::West);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.WestConstraints, CurrentCardinalDirection == ECardinalDirection::West);
 		FinalCardinalDirection = Pass ? ECardinalDirection::West : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, FVector4(40.f, 140.f, 50.f, 130.f), CurrentCardinalDirection == ECardinalDirection::East);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.EastConstraints, CurrentCardinalDirection == ECardinalDirection::East);
 		FinalCardinalDirection = Pass ? ECardinalDirection::East : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, FVector4(-50.f, 50.f, -40.f, 40.f), CurrentCardinalDirection == ECardinalDirection::North);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.NorthConstraints, CurrentCardinalDirection == ECardinalDirection::North);
 		FinalCardinalDirection = Pass ? ECardinalDirection::North : FinalCardinalDirection;
 		AnimationUtilData.CardinalDirection = FinalCardinalDirection;
 	}

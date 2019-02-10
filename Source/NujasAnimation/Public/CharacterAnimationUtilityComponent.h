@@ -26,30 +26,65 @@ enum class EMovementDirection: uint8
 };
 
 USTRUCT(BlueprintType)
+struct FCardinalDirectionConstraints
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 SouthConstraints = FVector4(130.f, 180.f, -180.f, -130.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 WestConstraints = FVector4(-140.f, -40.f, -130.f, 50.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 EastConstraints = FVector4(40.f, 140.f, 50.f, 130.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 NorthConstraints = FVector4(-50.f, 50.f, -40.f, 40.f);
+};
+
+USTRUCT(BlueprintType)
 struct FAnimationUtilData
 {
 	GENERATED_BODY()
 	// Grounded Args 
+	UPROPERTY(BlueprintReadOnly)
 	float Direction;
+	UPROPERTY(BlueprintReadOnly)
 	float MovementSpeed;
 
 	// Air Time Args
+	UPROPERTY(BlueprintReadOnly)
 	float FallSpeed;
+	UPROPERTY(BlueprintReadOnly)
 	float LeanInAir;
+	UPROPERTY(BlueprintReadOnly)
 	float InAirTime;
 
-	// TODO: Make this openly editable
+	UPROPERTY(BlueprintReadOnly)
 	float JumpVelocity = 100.0f;
 
+	UPROPERTY(BlueprintReadOnly)
+	float LeanRotation;
+	UPROPERTY(BlueprintReadOnly)
+	float LeanAcceleration;
+
+	UPROPERTY(BlueprintReadOnly)
 	bool bCharacterIsMoving;
+	UPROPERTY(BlueprintReadOnly)
 	bool bReceivingPlayerInput;
 
+	UPROPERTY(BlueprintReadOnly)
 	FRotator VelocityRotator;
 
+	//TODO: Cardinal Direction is no longer needed, but it's a good thing to look up for certain actions
+	UPROPERTY(BlueprintReadOnly)
 	ECardinalDirection CardinalDirection = ECardinalDirection::North;
+	UPROPERTY(BlueprintReadOnly)
 	EMovementDirection MovementDirection = EMovementDirection::Forward;
 
+	UPROPERTY(BlueprintReadOnly)
 	FVector4 MovementDirectionConstraints; // Only for Forward / Backward
+
+	UPROPERTY(BlueprintReadOnly)
+	FCardinalDirectionConstraints CardinalDirectionConstraints;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -70,6 +105,8 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	void SetDirectionEnum();
 	void SetCurrentSpeed();
 	void SetCurrentDirection();
+	void UpdateCharacterLeanRotation();
+	void UpdateCharacterLeanAcceleration();
 
   public:
 	// Sets default values for this component's properties
