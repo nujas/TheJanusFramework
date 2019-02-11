@@ -26,18 +26,18 @@ enum class EMovementDirection: uint8
 };
 
 USTRUCT(BlueprintType)
-struct FCardinalDirectionConstraints
+struct FCardinalDirectionConstraint
 {
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadOnly)
-	FVector4 SouthConstraints = FVector4(130.f, 180.f, -180.f, -130.f);
+	FVector4 SouthConstraint = FVector4(130.f, 180.f, -180.f, -130.f);
 	UPROPERTY(BlueprintReadOnly)
-	FVector4 WestConstraints = FVector4(-140.f, -40.f, -130.f, 50.f);
+	FVector4 WestConstraint = FVector4(-140.f, -40.f, -130.f, 50.f);
 	UPROPERTY(BlueprintReadOnly)
-	FVector4 EastConstraints = FVector4(40.f, 140.f, 50.f, 130.f);
+	FVector4 EastConstraint = FVector4(40.f, 140.f, 50.f, 130.f);
 	UPROPERTY(BlueprintReadOnly)
-	FVector4 NorthConstraints = FVector4(-50.f, 50.f, -40.f, 40.f);
+	FVector4 NorthConstraint = FVector4(-50.f, 50.f, -40.f, 40.f);
 };
 
 USTRUCT(BlueprintType)
@@ -81,10 +81,10 @@ struct FAnimationUtilData
 	EMovementDirection MovementDirection = EMovementDirection::Forward;
 
 	UPROPERTY(BlueprintReadOnly)
-	FVector4 MovementDirectionConstraints; // Only for Forward / Backward
+	FVector4 MovementDirectionConstraint; // Only for Forward / Backward
 
 	UPROPERTY(BlueprintReadOnly)
-	FCardinalDirectionConstraints CardinalDirectionConstraints;
+	FCardinalDirectionConstraint CardinalDirectionConstraint;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -99,7 +99,9 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	UPROPERTY(VisibleDefaultsOnly)
 	UCharacterMovementComponent *ChracterMovementComponent;
 
+	// Main function that all of the animation data present in the FAnimationUtilData struct
 	void UpdateAnimationData();
+
 	void UpdateInAirData();
 	void SetCardinalEnum();
 	void SetDirectionEnum();
@@ -149,6 +151,13 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
 	FAnimationUtilData GetAnimationUtilData() const;
-
+	/**
+	 * Math function responsible for determining whether a float is within one of the 2 float ranges. 
+	 * A float range is selected based on the bool
+	 *
+	 * @param TargetFloat			The float that will be tested
+	 * @param DualRange				The vector that contains the 2 ranges 
+	 * @param RangeSelect			The bool that selects the range to check against (true: x(min) & y(max), false: z(min) & w(max))
+	 */
 	static bool IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool RangeSelect);
 };

@@ -9,7 +9,7 @@
 UCharacterAnimationUtilityComponent::UCharacterAnimationUtilityComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-	AnimationUtilData.MovementDirectionConstraints = FVector4(-100, 100, -80, 80); // Default
+	AnimationUtilData.MovementDirectionConstraint = FVector4(-100, 100, -80, 80); // Default
 }
 
 void UCharacterAnimationUtilityComponent::BeginPlay()
@@ -32,6 +32,7 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 			!FMath::IsNearlyZero(VerticalInput, 0.01f) ||
 			!FMath::IsNearlyZero(HorizontalInput, 0.01f);
 	}
+#if WITH_EDITORONLY_DATA
 	else
 	{
 		UE_LOG
@@ -42,6 +43,7 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 			*this->GetName()
 		);
 	}
+#endif
 }
 
 bool UCharacterAnimationUtilityComponent::IsCharacterMoving()
@@ -159,17 +161,17 @@ void UCharacterAnimationUtilityComponent::SetCardinalEnum()
 {
 	if(IsCharacterMoving())
 	{
-		FCardinalDirectionConstraints CDConstraints = AnimationUtilData.CardinalDirectionConstraints;
+		FCardinalDirectionConstraint CDConstraint = AnimationUtilData.CardinalDirectionConstraint;
 		float LocalDirection = AnimationUtilData.Direction;
 		ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
 		ECardinalDirection FinalCardinalDirection = ECardinalDirection::North;
-		bool Pass = IsFloatInDualRange(LocalDirection, CDConstraints.EastConstraints, LocalDirection > 0.0f);
+		bool Pass = IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
 		FinalCardinalDirection = Pass ? ECardinalDirection::South : ECardinalDirection::North;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.WestConstraints, CurrentCardinalDirection == ECardinalDirection::West);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
 		FinalCardinalDirection = Pass ? ECardinalDirection::West : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.EastConstraints, CurrentCardinalDirection == ECardinalDirection::East);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
 		FinalCardinalDirection = Pass ? ECardinalDirection::East : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraints.NorthConstraints, CurrentCardinalDirection == ECardinalDirection::North);
+		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
 		FinalCardinalDirection = Pass ? ECardinalDirection::North : FinalCardinalDirection;
 		AnimationUtilData.CardinalDirection = FinalCardinalDirection;
 	}
@@ -180,10 +182,10 @@ void UCharacterAnimationUtilityComponent::SetDirectionEnum()
 	if (IsCharacterMoving())
 	{
 		float LocalDirection = AnimationUtilData.Direction;
-		FVector4 MovementConstraints = AnimationUtilData.MovementDirectionConstraints;
+		FVector4 MovementConstraint = AnimationUtilData.MovementDirectionConstraint;
 		EMovementDirection CurrentDirection = AnimationUtilData.MovementDirection;
 		AnimationUtilData.MovementDirection = IsFloatInDualRange(LocalDirection, 
-			MovementConstraints, 
+			MovementConstraint, 
 			CurrentDirection == EMovementDirection::Forward) 
 			? EMovementDirection::Forward : EMovementDirection::Backward;
 	}
