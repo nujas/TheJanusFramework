@@ -4,7 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Core/Public/Misc/App.h"
-#include "Engine/Classes/Kismet/KismetMathLibrary.h"
+#include "NujasCore/Public/MathUtility.h"
 
 UCharacterAnimationUtilityComponent::UCharacterAnimationUtilityComponent()
 {
@@ -121,11 +121,11 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterLeanRotation()
 	float Yaw = AnimationUtilData.Direction / DeltaTime;
 	float Speed = AnimationUtilData.MovementSpeed;
 	float LeanRotation = AnimationUtilData.LeanRotation;
-	Yaw = UKismetMathLibrary::FClamp(Yaw, -200.f, 200.f); // Magic
-	Yaw = UKismetMathLibrary::MapRangeClamped(Yaw, -200.f, 200.f, -.2f, .2f); // Magic
-	Speed = UKismetMathLibrary::MapRangeClamped(Speed, 165.f, 375.f, 0.f, 1.f); // Magic
+	Yaw = FMath::Clamp(Yaw, -200.f, 200.f); // Magic
+	Yaw = FMath::GetMappedRangeValueClamped(FVector2D(-200.f, 200.f), FVector2D(-.2f, .2f), Yaw); // Magic
+	Speed = FMath::GetMappedRangeValueClamped(FVector2D(165.f, 375.f), FVector2D(0.f, 1.f), Speed); // Magic
 	Yaw *= Speed;
-	AnimationUtilData.LeanRotation = UKismetMathLibrary::FInterpTo(LeanRotation, Yaw, DeltaTime, 8.f);
+	AnimationUtilData.LeanRotation = FMath::FInterpTo(LeanRotation, Yaw, DeltaTime, 8.f);
 }
 
 void UCharacterAnimationUtilityComponent::UpdateCharacterLeanAcceleration()
@@ -144,16 +144,16 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterLeanAcceleration()
 		if(AccSpeed < 0.f)
 		{
 			NegativeBrakingDecWalking = -1 * ChracterMovementComponent->BrakingDecelerationWalking;
-			AccClamped = UKismetMathLibrary::MapRangeClamped(AccSpeed, 0.f, NegativeBrakingDecWalking, 0.f, -.2f);
+			AccClamped = FMath::GetMappedRangeValueClamped(FVector2D(0.f, NegativeBrakingDecWalking), FVector2D(0.f, -.2f), AccSpeed);
 		}
 		else
 		{
 			MaxAcc = ChracterMovementComponent->GetMaxAcceleration();
-			AccClamped = UKismetMathLibrary::MapRangeClamped(AccSpeed, 0.f, MaxAcc, 0.f, .2f);
+			AccClamped = FMath::GetMappedRangeValueClamped(FVector2D(0.f, MaxAcc), FVector2D(0.f, .2f), AccSpeed);
 		}
-		MovementSpeed = UKismetMathLibrary::MapRangeClamped(MovementSpeed, 165.f, 375.f, 0.f, 1.f); // Magic
+		MovementSpeed = FMath::GetMappedRangeValueClamped(FVector2D(165.f, 375.f), FVector2D(0.f, 1.f), MovementSpeed); // Magic
 		AccClamped *= MovementSpeed;
-		AnimationUtilData.LeanAcceleration = UKismetMathLibrary::FInterpTo(LeanAcceleration, AccClamped, DeltaTime, 8.f);
+		AnimationUtilData.LeanAcceleration = FMath::FInterpTo(LeanAcceleration, AccClamped, DeltaTime, 8.f);
 	}
 }
 
@@ -165,13 +165,13 @@ void UCharacterAnimationUtilityComponent::SetCardinalEnum()
 		float LocalDirection = AnimationUtilData.Direction;
 		ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
 		ECardinalDirection FinalCardinalDirection = ECardinalDirection::North;
-		bool Pass = IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
+		bool Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
 		FinalCardinalDirection = Pass ? ECardinalDirection::South : ECardinalDirection::North;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
+		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
 		FinalCardinalDirection = Pass ? ECardinalDirection::West : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
+		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
 		FinalCardinalDirection = Pass ? ECardinalDirection::East : FinalCardinalDirection;
-		Pass = IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
+		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
 		FinalCardinalDirection = Pass ? ECardinalDirection::North : FinalCardinalDirection;
 		AnimationUtilData.CardinalDirection = FinalCardinalDirection;
 	}
@@ -184,7 +184,7 @@ void UCharacterAnimationUtilityComponent::SetDirectionEnum()
 		float LocalDirection = AnimationUtilData.Direction;
 		FVector4 MovementConstraint = AnimationUtilData.MovementDirectionConstraint;
 		EMovementDirection CurrentDirection = AnimationUtilData.MovementDirection;
-		AnimationUtilData.MovementDirection = IsFloatInDualRange(LocalDirection, 
+		AnimationUtilData.MovementDirection = UMathUtility::IsFloatInDualRange(LocalDirection, 
 			MovementConstraint, 
 			CurrentDirection == EMovementDirection::Forward) 
 			? EMovementDirection::Forward : EMovementDirection::Backward;
@@ -204,8 +204,10 @@ void UCharacterAnimationUtilityComponent::SetCurrentDirection()
 	if(CharacterOwner)
 	{
 		FVector CharacterVelocity = CharacterOwner->GetVelocity();
-		AnimationUtilData.VelocityRotator = UKismetMathLibrary::Conv_VectorToRotator(FVector(CharacterVelocity.X, CharacterVelocity.Y, 0.f));
-		FRotator NormalizedDeltaRotator = UKismetMathLibrary::NormalizedDeltaRotator(AnimationUtilData.VelocityRotator, CharacterOwner->GetActorRotation());
+		AnimationUtilData.VelocityRotator = FVector(CharacterVelocity.X, CharacterVelocity.Y, 0.f).Rotation();
+		FRotator DeltaRotator = AnimationUtilData.VelocityRotator - CharacterOwner->GetActorRotation();
+		DeltaRotator.Normalize();
+		FRotator NormalizedDeltaRotator = DeltaRotator;
 		AnimationUtilData.Direction = AnimationUtilData.bCharacterIsMoving ? NormalizedDeltaRotator.Yaw : 0.0f;
 	}
 }
@@ -213,22 +215,4 @@ void UCharacterAnimationUtilityComponent::SetCurrentDirection()
 FAnimationUtilData UCharacterAnimationUtilityComponent::GetAnimationUtilData() const
 {
 	return AnimationUtilData;
-}
-
-bool UCharacterAnimationUtilityComponent::IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool RangeSelect)
-{
-	float FinalMin;
-	float FinalMax;
-
-	if (RangeSelect)
-	{
-		FinalMin = DualRange.X;
-		FinalMax = DualRange.Y;
-	}
-	else
-	{
-		FinalMin = DualRange.Z;
-		FinalMax = DualRange.W;
-	}
-	return UKismetMathLibrary::InRange_FloatFloat(TargetFloat, FinalMin, FinalMax);
 }

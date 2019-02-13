@@ -151,13 +151,4 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
 	FAnimationUtilData GetAnimationUtilData() const;
-	/**
-	 * Math function responsible for determining whether a float is within one of the 2 float ranges. 
-	 * A float range is selected based on the bool
-	 *
-	 * @param TargetFloat			The float that will be tested
-	 * @param DualRange				The vector that contains the 2 ranges 
-	 * @param RangeSelect			The bool that selects the range to check against (true: x(min) & y(max), false: z(min) & w(max))
-	 */
-	static bool IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool RangeSelect);
 };
