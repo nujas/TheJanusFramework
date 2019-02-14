@@ -9,29 +9,82 @@
 class ACharacter;
 class UCharacterMovementComponent;
 
-USTRUCT()
+UENUM(BlueprintType)
+enum class ECardinalDirection: uint8
+{
+	North			UMETA(DisplayName = "North"),
+	East			UMETA(DisplayName = "East"),
+	West			UMETA(DisplayName = "West"),
+	South			UMETA(DisplayName = "South")
+};
+
+UENUM(BlueprintType)
+enum class EMovementDirection: uint8
+{
+	Forward			UMETA(DisplayName = "Forward"),
+	Backward		UMETA(DisplayName = "Backward")
+};
+
+USTRUCT(BlueprintType)
+struct FCardinalDirectionConstraint
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 SouthConstraint = FVector4(130.f, 180.f, -180.f, -130.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 WestConstraint = FVector4(-140.f, -40.f, -130.f, 50.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 EastConstraint = FVector4(40.f, 140.f, 50.f, 130.f);
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 NorthConstraint = FVector4(-50.f, 50.f, -40.f, 40.f);
+};
+
+USTRUCT(BlueprintType)
 struct FAnimationUtilData
 {
 	GENERATED_BODY()
 	// Grounded Args 
+	UPROPERTY(BlueprintReadOnly)
 	float Direction;
+	UPROPERTY(BlueprintReadOnly)
 	float MovementSpeed;
 
 	// Air Time Args
+	UPROPERTY(BlueprintReadOnly)
 	float FallSpeed;
+	UPROPERTY(BlueprintReadOnly)
 	float LeanInAir;
+	UPROPERTY(BlueprintReadOnly)
 	float InAirTime;
-	// TODO: Make this openly editable
+
+	UPROPERTY(BlueprintReadOnly)
 	float JumpVelocity = 100.0f;
 
-	//Cardinal Direction Args
-	float RotationOffset;
+	UPROPERTY(BlueprintReadOnly)
+	float LeanRotation;
+	UPROPERTY(BlueprintReadOnly)
+	float LeanAcceleration;
 
+	UPROPERTY(BlueprintReadOnly)
 	bool bCharacterIsMoving;
+	UPROPERTY(BlueprintReadOnly)
 	bool bReceivingPlayerInput;
 
-	// TODO: Make Cardinal Direction Enum
-	// TODO: Make Movement Direction Enum
+	UPROPERTY(BlueprintReadOnly)
+	FRotator VelocityRotator;
+
+	//TODO: Cardinal Direction is no longer needed, but it's a good thing to look up for certain actions
+	UPROPERTY(BlueprintReadOnly)
+	ECardinalDirection CardinalDirection = ECardinalDirection::North;
+	UPROPERTY(BlueprintReadOnly)
+	EMovementDirection MovementDirection = EMovementDirection::Forward;
+
+	UPROPERTY(BlueprintReadOnly)
+	FVector4 MovementDirectionConstraint; // Only for Forward / Backward
+
+	UPROPERTY(BlueprintReadOnly)
+	FCardinalDirectionConstraint CardinalDirectionConstraint;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -45,6 +98,17 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	ACharacter *CharacterOwner;
 	UPROPERTY(VisibleDefaultsOnly)
 	UCharacterMovementComponent *ChracterMovementComponent;
+
+	// Main function that all of the animation data present in the FAnimationUtilData struct
+	void UpdateAnimationData();
+
+	void UpdateInAirData();
+	void SetCardinalEnum();
+	void SetDirectionEnum();
+	void SetCurrentSpeed();
+	void SetCurrentDirection();
+	void UpdateCharacterLeanRotation();
+	void UpdateCharacterLeanAcceleration();
 
   public:
 	// Sets default values for this component's properties
@@ -85,10 +149,6 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	 */
 	void UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput);
 
-	void UpdateAnimationData();
-
-	void UpdateInAirData();
-
-	void SetCurrentSpeed();
-	void SetCurrentDirection();
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
+	FAnimationUtilData GetAnimationUtilData() const;
 };
