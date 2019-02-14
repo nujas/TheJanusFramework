@@ -33,6 +33,11 @@
 			"Name": "NujasInventory",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasCombat",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }

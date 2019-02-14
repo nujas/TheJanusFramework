@@ -4,7 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Core/Public/Misc/App.h"
-#include "NujasCore/Public/MathUtility.h"
+#include "MathUtility.h" // NujasCore
 
 UCharacterAnimationUtilityComponent::UCharacterAnimationUtilityComponent()
 {
