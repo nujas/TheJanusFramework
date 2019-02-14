@@ -2,12 +2,12 @@
 
 #include "MathUtility.h"
 
-bool UMathUtility::IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool RangeSelect)
+bool UMathUtility::IsFloatInDualRange(float TargetFloat, FVector4 DualRange, bool bRangeSelect)
 {
 	float FinalMin;
 	float FinalMax;
 
-	if (RangeSelect)
+	if (bRangeSelect)
 	{
 		FinalMin = DualRange.X;
 		FinalMax = DualRange.Y;

@@ -165,14 +165,14 @@ void UCharacterAnimationUtilityComponent::SetCardinalEnum()
 		float LocalDirection = AnimationUtilData.Direction;
 		ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
 		ECardinalDirection FinalCardinalDirection = ECardinalDirection::North;
-		bool Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
-		FinalCardinalDirection = Pass ? ECardinalDirection::South : ECardinalDirection::North;
-		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
-		FinalCardinalDirection = Pass ? ECardinalDirection::West : FinalCardinalDirection;
-		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
-		FinalCardinalDirection = Pass ? ECardinalDirection::East : FinalCardinalDirection;
-		Pass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
-		FinalCardinalDirection = Pass ? ECardinalDirection::North : FinalCardinalDirection;
+		bool bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
+		FinalCardinalDirection = bPass ? ECardinalDirection::South : ECardinalDirection::North;
+		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
+		FinalCardinalDirection = bPass ? ECardinalDirection::West : FinalCardinalDirection;
+		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
+		FinalCardinalDirection = bPass ? ECardinalDirection::East : FinalCardinalDirection;
+		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
+		FinalCardinalDirection = bPass ? ECardinalDirection::North : FinalCardinalDirection;
 		AnimationUtilData.CardinalDirection = FinalCardinalDirection;
 	}
 }
