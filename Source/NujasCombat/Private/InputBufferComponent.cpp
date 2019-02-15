@@ -25,10 +25,10 @@ void UInputBufferComponent::ConsumeInputBuffer()
 	ClearInputBuffer();
 }
 
-void UInputBufferComponent::UpdateKey(ECommonInput Key)
+void UInputBufferComponent::UpdateKey(EInputKeyType Key)
 {
 	InputKey = Key;
-	if (IsOpenBuffer()) 
+	if (!IsOpenBuffer()) 
 		ConsumeInputBuffer();
 }
 

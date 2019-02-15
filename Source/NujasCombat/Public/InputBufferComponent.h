@@ -5,17 +5,29 @@
 #include "PlatformUtility.h"
 #include "InputBufferComponent.generated.h"
 
+UENUM(BlueprintType)
+enum class EInputKeyType : uint8
+{
+	Default			UMETA(DisplayName = "Default"),
+	LightAttack		UMETA(DisplayName = "Light Attack"),
+	HeavyAttack		UMETA(DisplayName = "Heavy Attack"),
+	ThrustAttack	UMETA(DisplayName = "Thrust Attack"),
+	SpecialAttack	UMETA(DisplayName = "Special Attack"),
+	AirAttack		UMETA(DisplayName = "Air Attack"),
+	ParryAttack		UMETA(DisplayName = "Parry Attack")
+};
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInputBufferDelegate);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FParameterizedInputBufferDelegate, ECommonInput, InputKey);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FParameterizedInputBufferDelegate, EInputKeyType, InputKey);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class NUJASCOMBAT_API UInputBufferComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
-	ECommonInput InputKey = ECommonInput::Default;
-	bool bIsOpenBuffer = false; // TODO: Verify that the buffer shoul be closed by default
+	EInputKeyType InputKey = EInputKeyType::Default;
+	bool bIsOpenBuffer = false;
 
 	void ConsumeInputBuffer();
 
@@ -39,16 +51,22 @@ class NUJASCOMBAT_API UInputBufferComponent : public UActorComponent
   public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-
-	void UpdateKey(ECommonInput Key);
-
+	
+	UFUNCTION(BlueprintCallable, Category = "Input Buffer")
+	void UpdateKey(EInputKeyType Key);
+	
+	UFUNCTION(BlueprintCallable, Category = "Input Buffer")
 	void OpenInputBuffer();
-
+	
+	UFUNCTION(BlueprintCallable, Category = "Input Buffer")
 	void CloseInputBuffer();
 
-	void ClearInputBuffer() { InputKey = ECommonInput::Default; };
+	UFUNCTION(BlueprintCallable, Category = "Input Buffer")
+	void ClearInputBuffer() { InputKey = EInputKeyType::Default; };
 
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Input Buffer")
 	bool IsOpenBuffer() const { return bIsOpenBuffer; };
 
-	ECommonInput GetStoredKey() const { return InputKey; };
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Input Buffer")
+	EInputKeyType GetStoredKey() const { return InputKey; };
 };
