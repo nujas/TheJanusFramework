@@ -10,6 +10,14 @@ class ACharacter;
 class UCharacterMovementComponent;
 
 UENUM(BlueprintType)
+enum class ETargetingState : uint8
+{
+	Player			UMETA(DisplayName = "Player Control"),
+	AutoAim			UMETA(DisplayName = "AutoAim"),
+	Cinematic		UMETA(DisplayName = "Cinematic")
+};
+
+UENUM(BlueprintType)
 enum class ECardinalDirection: uint8
 {
 	North			UMETA(DisplayName = "North"),
@@ -85,6 +93,9 @@ struct FAnimationUtilData
 
 	UPROPERTY(BlueprintReadOnly)
 	FCardinalDirectionConstraint CardinalDirectionConstraint;
+	
+	UPROPERTY(BlueprintReadOnly)
+	ETargetingState TargetingState = ETargetingState::Player;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -150,5 +161,11 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 	void UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput);
 
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
+	ETargetingState GetTargetingState() const;
+
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Character Animation Utility")
 	FAnimationUtilData GetAnimationUtilData() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Character Animation Utility")
+	void SetTargetingState(ETargetingState TargetingState);
 };

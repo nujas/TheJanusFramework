@@ -4,7 +4,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Core/Public/Misc/App.h"
-#include "NujasCore/Public/MathUtility.h"
+#include "MathUtility.h" // NujasCore Module
 
 UCharacterAnimationUtilityComponent::UCharacterAnimationUtilityComponent()
 {
@@ -29,8 +29,11 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 	if (ChracterMovementComponent)
 	{
 		ChracterMovementComponent->bUseControllerDesiredRotation =
-			!FMath::IsNearlyZero(VerticalInput, 0.01f) ||
-			!FMath::IsNearlyZero(HorizontalInput, 0.01f);
+			(!FMath::IsNearlyZero(VerticalInput, 0.01f) ||
+			!FMath::IsNearlyZero(HorizontalInput, 0.01f) || 
+			!FMath::IsNearlyEqual(ChracterMovementComponent->GetLastUpdateVelocity().Size(), 0.0f))
+			&&
+			AnimationUtilData.TargetingState == ETargetingState::Player;
 	}
 #if WITH_EDITORONLY_DATA
 	else
@@ -215,4 +218,14 @@ void UCharacterAnimationUtilityComponent::SetCurrentDirection()
 FAnimationUtilData UCharacterAnimationUtilityComponent::GetAnimationUtilData() const
 {
 	return AnimationUtilData;
+}
+
+ETargetingState UCharacterAnimationUtilityComponent::GetTargetingState() const
+{
+	return AnimationUtilData.TargetingState;
+}
+
+void UCharacterAnimationUtilityComponent::SetTargetingState(ETargetingState TargetingState)
+{
+	AnimationUtilData.TargetingState = TargetingState;
 }
