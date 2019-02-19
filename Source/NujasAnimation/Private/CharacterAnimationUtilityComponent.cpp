@@ -33,7 +33,7 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 			!FMath::IsNearlyZero(HorizontalInput, 0.01f) || 
 			!FMath::IsNearlyEqual(ChracterMovementComponent->GetLastUpdateVelocity().Size(), 0.0f))
 			&&
-			AnimationUtilData.TargetingState == ETargetingState::Player;
+			AnimationUtilData.TargetingState == ETargetingState::Manual;
 	}
 #if WITH_EDITORONLY_DATA
 	else

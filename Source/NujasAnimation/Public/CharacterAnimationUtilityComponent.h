@@ -12,7 +12,7 @@ class UCharacterMovementComponent;
 UENUM(BlueprintType)
 enum class ETargetingState : uint8
 {
-	Player			UMETA(DisplayName = "Player Control"),
+	Manual			UMETA(DisplayName = "Manual"),
 	AutoAim			UMETA(DisplayName = "AutoAim"),
 	Cinematic		UMETA(DisplayName = "Cinematic")
 };
@@ -95,7 +95,7 @@ struct FAnimationUtilData
 	FCardinalDirectionConstraint CardinalDirectionConstraint;
 	
 	UPROPERTY(BlueprintReadOnly)
-	ETargetingState TargetingState = ETargetingState::Player;
+	ETargetingState TargetingState = ETargetingState::Manual;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
