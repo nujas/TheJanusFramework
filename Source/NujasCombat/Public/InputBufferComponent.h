@@ -14,7 +14,8 @@ enum class EInputKeyType : uint8
 	ThrustAttack	UMETA(DisplayName = "Thrust Attack"),
 	SpecialAttack	UMETA(DisplayName = "Special Attack"),
 	AirAttack		UMETA(DisplayName = "Air Attack"),
-	ParryAttack		UMETA(DisplayName = "Parry Attack")
+	MagicAttack		UMETA(DisplayName = "Magic Attack"),
+	Parry			UMETA(DisplayName = "Parry")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInputBufferDelegate);
