@@ -8,14 +8,17 @@
 UENUM(BlueprintType)
 enum class EInputKeyType : uint8
 {
-	Default			UMETA(DisplayName = "Default"),
-	LightAttack		UMETA(DisplayName = "Light Attack"),
-	HeavyAttack		UMETA(DisplayName = "Heavy Attack"),
-	ThrustAttack	UMETA(DisplayName = "Thrust Attack"),
-	SpecialAttack	UMETA(DisplayName = "Special Attack"),
-	AirAttack		UMETA(DisplayName = "Air Attack"),
-	MagicAttack		UMETA(DisplayName = "Magic Attack"),
-	Parry			UMETA(DisplayName = "Parry")
+	Default					UMETA(DisplayName = "Default"),
+	LightAttack				UMETA(DisplayName = "Light Attack"),
+	HeavyAttack				UMETA(DisplayName = "Heavy Attack"),
+	ThrustAttack			UMETA(DisplayName = "Thrust Attack"),
+	SpecialAttack			UMETA(DisplayName = "Special Attack"),
+	AirAttack				UMETA(DisplayName = "Air Attack"),
+	LightMagicAttack		UMETA(DisplayName = "Light Magic Attack"),
+	HeavyMagicAttack		UMETA(DisplayName = "Heavy Magic Attack"),
+	AreaOfEffectAttack		UMETA(DisplayName = "Area of Effect Attack"),
+	ShieldBash				UMETA(DisplayName = "Shield Bash"),
+	Parry					UMETA(DisplayName = "Parry")
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInputBufferDelegate);
