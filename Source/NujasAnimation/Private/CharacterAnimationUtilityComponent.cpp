@@ -3,6 +3,7 @@
 #include "CharacterAnimationUtilityComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Core/Public/Misc/App.h"
 #include "MathUtility.h" // NujasCore Module
 
@@ -17,14 +18,10 @@ void UCharacterAnimationUtilityComponent::BeginPlay()
 	Super::BeginPlay();
 	CharacterOwner = Cast<ACharacter>(GetOwner());
 	ChracterMovementComponent = CharacterOwner->GetCharacterMovement();
+	CapsuleComponent = CharacterOwner->FindComponentByClass<UCapsuleComponent>();
 }
 
-void UCharacterAnimationUtilityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-}
-
-void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement(float VerticalInput, float HorizontalInput)
+void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement(const float VerticalInput, const float HorizontalInput)
 {
 	if (ChracterMovementComponent)
 	{
@@ -49,7 +46,7 @@ void UCharacterAnimationUtilityComponent::UpdateCharacterRotationBasedOnMovement
 #endif
 }
 
-bool UCharacterAnimationUtilityComponent::IsCharacterMoving()
+bool UCharacterAnimationUtilityComponent::IsCharacterMoving() const
 {
 	if (CharacterOwner)
 		return !CharacterOwner->GetVelocity().IsNearlyZero(0.01f);
@@ -59,11 +56,15 @@ bool UCharacterAnimationUtilityComponent::IsCharacterMoving()
 bool UCharacterAnimationUtilityComponent::IsThereMovementInput()
 {
 	if (ChracterMovementComponent)
-		return !ChracterMovementComponent->GetLastInputVector().IsNearlyZero(0.001f);
+	{
+		const FVector LastInputVector = ChracterMovementComponent->GetLastInputVector();
+		AnimationUtilData.MovementInputRotator = LastInputVector.Rotation();
+		return !LastInputVector.IsNearlyZero(0.001f);
+	}
 	return false;
 }
 
-void UCharacterAnimationUtilityComponent::UpdateForwardBasedAnimationSystem(float VerticalInput, float HorizontalInput)
+void UCharacterAnimationUtilityComponent::UpdateForwardBasedAnimationSystem(const float VerticalInput, const float HorizontalInput)
 {
 	UpdateCharacterRotationBasedOnMovement(VerticalInput, HorizontalInput);
 	UpdateAnimationData();
@@ -73,13 +74,28 @@ void UCharacterAnimationUtilityComponent::UpdateAnimationData()
 {
 	AnimationUtilData.bCharacterIsMoving = IsCharacterMoving();
 	AnimationUtilData.bReceivingPlayerInput = IsThereMovementInput();
-	SetCurrentSpeed();
+	AnimationUtilData.LeanRotation = UpdateCharacterLeanRotation();
+	AnimationUtilData.LeanAcceleration = UpdateCharacterLeanAcceleration();
+
 	SetCurrentDirection();
+
+	// Set Lean values + the lean struct
+	FVector RotVector(AnimationUtilData.LeanRotation, AnimationUtilData.LeanAcceleration, 0.f);
+	// Rotate around the downward unit vector
+	RotVector = RotVector.RotateAngleAxis(AnimationUtilData.Direction, FVector(0.f, 0.f, -1.f)); 
+	AnimationUtilData.Lean = FVector2D(RotVector.X, RotVector.Y);
+
+	UpdateCharacterAcceleration();
+	UpdateAimData(); // head only
 	UpdateInAirData();
-	UpdateCharacterLeanAcceleration();
-	UpdateCharacterLeanRotation();
+	UpdateAnimationGait();
+	UpdateAnimationPlayRate(AnimationUtilData.AnimationPlayRate);
+	
 	SetCardinalEnum();
-	SetDirectionEnum();
+	UpdateDirectionEnum();
+
+	if (AnimationUtilData.bCharacterIsMoving)
+		UpdateFootStartPosition(AnimationUtilData.FootStartPosition, LeftFootStartPosition, RightFootStartPosition);
 }
 
 void UCharacterAnimationUtilityComponent::UpdateInAirData()
@@ -90,11 +106,9 @@ void UCharacterAnimationUtilityComponent::UpdateInAirData()
 		{
 			if (CharacterOwner)
 			{
-				float FallSpeed = CharacterOwner->GetVelocity().Z;
-				float JumpVelocity = AnimationUtilData.JumpVelocity;
-				AnimationUtilData.FallSpeed = FallSpeed;
-				AnimationUtilData.InAirTime += FApp::GetDeltaTime();
-				float ClampedFallSpeed = FMath::GetMappedRangeValueClamped
+				const float FallSpeed = CharacterOwner->GetVelocity().Z;
+				const float JumpVelocity = AnimationUtilData.JumpVelocity;
+				const float ClampedFallSpeed = FMath::GetMappedRangeValueClamped
 				(
 					{ JumpVelocity, -1 * JumpVelocity },
 					{ 1, -1 },
@@ -106,6 +120,8 @@ void UCharacterAnimationUtilityComponent::UpdateInAirData()
 					0.f,
 					ChracterMovementComponent->MaxWalkSpeed
 				);
+				AnimationUtilData.FallSpeed = FallSpeed;
+				AnimationUtilData.InAirTime += FApp::GetDeltaTime();
 				AnimationUtilData.LeanInAir = ClampedFallSpeed * NormalizedInRangeSpeed;
 			}
 		}
@@ -118,87 +134,276 @@ void UCharacterAnimationUtilityComponent::UpdateInAirData()
 	}
 }
 
-void UCharacterAnimationUtilityComponent::UpdateCharacterLeanRotation()
+float UCharacterAnimationUtilityComponent::UpdateCharacterLeanRotation()
 {
-	float DeltaTime = FApp::GetDeltaTime();
-	float Yaw = AnimationUtilData.Direction / DeltaTime;
-	float Speed = AnimationUtilData.MovementSpeed;
-	float LeanRotation = AnimationUtilData.LeanRotation;
-	Yaw = FMath::Clamp(Yaw, -200.f, 200.f); // Magic
-	Yaw = FMath::GetMappedRangeValueClamped(FVector2D(-200.f, 200.f), FVector2D(-.2f, .2f), Yaw); // Magic
-	Speed = FMath::GetMappedRangeValueClamped(FVector2D(165.f, 375.f), FVector2D(0.f, 1.f), Speed); // Magic
-	Yaw *= Speed;
-	AnimationUtilData.LeanRotation = FMath::FInterpTo(LeanRotation, Yaw, DeltaTime, 8.f);
+	if (!ChracterMovementComponent) 
+		return 0.f;
+	const float DeltaTime = FApp::GetDeltaTime();
+	const FRotator VelocityRotator = CharacterOwner->GetVelocity().Rotation();
+	const FRotator StoredRotator = AnimationUtilData.VelocityRotator.ContainsNaN() ? VelocityRotator : AnimationUtilData.VelocityRotator;
+
+	FRotator VelocityRotatorDelta = VelocityRotator - StoredRotator;
+	VelocityRotatorDelta.Normalize();
+
+	float VelocityDelta = VelocityRotatorDelta.Yaw / DeltaTime;
+	AnimationUtilData.VelocityRotator = VelocityRotator; // save
+
+	VelocityDelta = FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(-200.f, 200.f), 
+		FVector2D(-1.f, 1.f),
+		VelocityDelta
+	);
+	VelocityDelta *= FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(WalkSpeed, RunSpeed), 
+		FVector2D(0.f, 1.f), 
+		AnimationUtilData.MovementSpeed
+	);
+	return VelocityDelta;
 }
 
-void UCharacterAnimationUtilityComponent::UpdateCharacterLeanAcceleration()
+float UCharacterAnimationUtilityComponent::UpdateCharacterLeanAcceleration()
 {
-	// TODO: Probs not AccVector is supposed to be used here
-	if (ChracterMovementComponent)
+	// TODO: should play around with the interploation speed. 
+	if (!ChracterMovementComponent)
+		return 0.f;
+	const float DeltaTime = FApp::GetDeltaTime();
+	const float Speed = ChracterMovementComponent->Velocity.Size();
+	const float SpeedFrameDif = Speed - AnimationUtilData.MovementSpeed;
+
+	AnimationUtilData.MovementSpeed = Speed;
+	const float AccelerationFrameDif = SpeedFrameDif / DeltaTime;
+
+	float LeanAcceleration = 0.f;
+	const float MaxAcceleration = ChracterMovementComponent->GetMaxAcceleration();
+	const float BrakingAcceleration = ChracterMovementComponent->BrakingDecelerationWalking;
+	if (AccelerationFrameDif > 0.f)
 	{
-		float MaxAcc;
-		float NegativeBrakingDecWalking;
-		float AccClamped;
-		float DeltaTime = FApp::GetDeltaTime();
-		FVector AccVector = ChracterMovementComponent->GetCurrentAcceleration();
-		float AccSpeed = AccVector.Size2D();
-		float MovementSpeed = AnimationUtilData.MovementSpeed;
-		float LeanAcceleration = AnimationUtilData.LeanAcceleration;
-		if(AccSpeed < 0.f)
-		{
-			NegativeBrakingDecWalking = -1 * ChracterMovementComponent->BrakingDecelerationWalking;
-			AccClamped = FMath::GetMappedRangeValueClamped(FVector2D(0.f, NegativeBrakingDecWalking), FVector2D(0.f, -.2f), AccSpeed);
-		}
-		else
-		{
-			MaxAcc = ChracterMovementComponent->GetMaxAcceleration();
-			AccClamped = FMath::GetMappedRangeValueClamped(FVector2D(0.f, MaxAcc), FVector2D(0.f, .2f), AccSpeed);
-		}
-		MovementSpeed = FMath::GetMappedRangeValueClamped(FVector2D(165.f, 375.f), FVector2D(0.f, 1.f), MovementSpeed); // Magic
-		AccClamped *= MovementSpeed;
-		AnimationUtilData.LeanAcceleration = FMath::FInterpTo(LeanAcceleration, AccClamped, DeltaTime, 8.f);
+		LeanAcceleration = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(0.f, MaxAcceleration), 
+			FVector2D(0.f, 1.f), 
+			FMath::Abs(AccelerationFrameDif)
+		);
 	}
+	else
+	{
+		LeanAcceleration = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(0.f, BrakingAcceleration),
+			FVector2D(0.f, -1.f),
+			FMath::Abs(AccelerationFrameDif)
+		);
+	}
+	LeanAcceleration *= FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(WalkSpeed, RunSpeed), 
+		FVector2D(0.f, 1.f), 
+		Speed
+	);
+	return LeanAcceleration;
+}
+
+void UCharacterAnimationUtilityComponent::UpdateCharacterAcceleration(const float& AccelerationMultiplier, const float& GroundFrictionMultiplier)
+{
+	if (AnimationUtilData.VelocityRotator.ContainsNaN() 
+		|| AnimationUtilData.MovementInputRotator.ContainsNaN() 
+		|| !ChracterMovementComponent)
+		return;
+
+	FRotator DeltaRotator = AnimationUtilData.MovementInputRotator - AnimationUtilData.VelocityRotator;
+	DeltaRotator.Normalize();
+	float DeltaCharacterVelocity = DeltaRotator.Yaw;
+	AnimationUtilData.DeltaCharacterVelocity = DeltaCharacterVelocity;
+	DeltaCharacterVelocity = FMath::Abs(DeltaCharacterVelocity);
+	DeltaCharacterVelocity = FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(45.f, 130.f), 
+		FVector2D(1.f, 0.2f), 
+		DeltaCharacterVelocity
+	);
+	const float FrictionClamp = FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(45.f, 130.f), 
+		FVector2D(1.f, 0.4f), 
+		DeltaCharacterVelocity
+	);
+	ChracterMovementComponent->MaxAcceleration = DeltaCharacterVelocity * AccelerationMultiplier;
+	ChracterMovementComponent->GroundFriction = FrictionClamp * GroundFrictionMultiplier;
+}
+
+void UCharacterAnimationUtilityComponent::UpdateAimData()
+{
+	if (!CharacterOwner)
+		return;
+	const FRotator ControllerRotator = CharacterOwner->GetController()->GetControlRotation();
+	if (AnimationUtilData.ControllerRotator.ContainsNaN())
+	{
+		AnimationUtilData.ControllerRotator = ControllerRotator;
+	}
+	const float ControllerYaw = AnimationUtilData.ControllerRotator.Yaw;
+	AnimationUtilData.ControllerRotator = ControllerRotator;
+	AnimationUtilData.AimYawRate = (ControllerRotator.Yaw - ControllerYaw) / FApp::GetDeltaTime();
+	FRotator RotationDelta = ControllerRotator - CharacterOwner->GetActorRotation();
+	RotationDelta.Normalize();
+	AnimationUtilData.AimYawDelta = RotationDelta.Yaw;
+	const float AimOffsetInterpSpeed = FMath::Abs(RotationDelta.Yaw - AnimationUtilData.AimOffset.X);
+	const float ClampedAimOffsetInterpSpeed = FMath::GetMappedRangeValueClamped
+	(
+		FVector2D(0.f, 180.f), 
+		FVector2D(8.f, 5.f), 
+		AimOffsetInterpSpeed
+	);
+	if (FMath::Abs(AnimationUtilData.AimYawDelta) > 105.f)
+	{
+		AnimationUtilData.AimOffset = FMath::Vector2DInterpTo
+		(
+			AnimationUtilData.AimOffset, 
+			FVector2D(0.f, 0.f), 
+			FApp::GetDeltaTime(), 
+			4.f
+		);
+	}
+	else
+	{
+		const FVector2D TargetAimOffset(RotationDelta.Yaw, RotationDelta.Pitch);
+		AnimationUtilData.AimOffset = FMath::Vector2DInterpTo
+		(
+			AnimationUtilData.AimOffset, 
+			TargetAimOffset, 
+			FApp::GetDeltaTime(), 
+			ClampedAimOffsetInterpSpeed
+		);
+	}
+}
+
+// Simple update function to determine which foot to place (left or right)
+void UCharacterAnimationUtilityComponent::UpdateFootStartPosition(float& FootPosition, const float& LeftStart, const float& RightStart)
+{
+	FootPosition = AnimationUtilData.Direction > 0 ? LeftStart : RightStart;
+}
+
+void UCharacterAnimationUtilityComponent::UpdateAnimationGait()
+{
+	const float MovementSpeed = AnimationUtilData.MovementSpeed;
+	float Gait = 0.f;
+	if (MovementSpeed <= WalkSpeed)
+	{
+		Gait = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(0.f, WalkSpeed), 
+			FVector2D(0.f, 1.f), 
+			MovementSpeed
+		);
+	}
+	else if(MovementSpeed > WalkSpeed && MovementSpeed <= RunSpeed)
+	{
+		Gait = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(WalkSpeed, RunSpeed), 
+			FVector2D(1.f, 2.f), 
+			MovementSpeed
+		);
+	}
+	else
+	{
+		Gait = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(RunSpeed, SprintSpeed), 
+			FVector2D(2.f, 3.f), 
+			MovementSpeed
+		);
+	}
+	AnimationUtilData.AnimationGait = Gait;
+}
+
+void UCharacterAnimationUtilityComponent::UpdateAnimationPlayRate(float& OutPlayRate)
+{
+	const float Gait = AnimationUtilData.AnimationGait;
+	const float Speed = AnimationUtilData.MovementSpeed;
+	const float WalkUnclamped = FMath::GetMappedRangeValueUnclamped(FVector2D(0.f, WalkSpeed), FVector2D(0.f, 1.f), Speed);
+	const float RunUnclamped = FMath::GetMappedRangeValueUnclamped(FVector2D(0.f, RunSpeed), FVector2D(0.f, 1.f), Speed);
+	const float SprintUnclamped = FMath::GetMappedRangeValueUnclamped(FVector2D(0.f, SprintSpeed), FVector2D(0.f, 1.f), Speed);
+	
+	float ClampedPlayRate;
+	if (Gait < 2.f)
+	{
+		ClampedPlayRate = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(1.f, 2.f), 
+			FVector2D(WalkUnclamped, RunUnclamped), 
+			Gait
+		);
+	}
+	else
+	{
+		ClampedPlayRate = FMath::GetMappedRangeValueClamped
+		(
+			FVector2D(2.f, 3.f), 
+			FVector2D(RunUnclamped, SprintUnclamped), 
+			Gait
+		);
+	}
+	OutPlayRate = ClampedPlayRate / CapsuleComponent->RelativeScale3D.Z;
 }
 
 void UCharacterAnimationUtilityComponent::SetCardinalEnum()
 {
 	if(IsCharacterMoving())
 	{
-		FCardinalDirectionConstraint CDConstraint = AnimationUtilData.CardinalDirectionConstraint;
-		float LocalDirection = AnimationUtilData.Direction;
-		ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
+		const FCardinalDirectionConstraint CDConstraint = AnimationUtilData.CardinalDirectionConstraint;
+		const float LocalDirection = AnimationUtilData.Direction;
+		const ECardinalDirection CurrentCardinalDirection = AnimationUtilData.CardinalDirection;
 		ECardinalDirection FinalCardinalDirection = ECardinalDirection::North;
 		bool bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, LocalDirection > 0.0f);
 		FinalCardinalDirection = bPass ? ECardinalDirection::South : ECardinalDirection::North;
-		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.WestConstraint, CurrentCardinalDirection == ECardinalDirection::West);
+		bPass = UMathUtility::IsFloatInDualRange
+		(
+			LocalDirection, 
+			CDConstraint.WestConstraint, 
+			CurrentCardinalDirection == ECardinalDirection::West
+		);
 		FinalCardinalDirection = bPass ? ECardinalDirection::West : FinalCardinalDirection;
-		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.EastConstraint, CurrentCardinalDirection == ECardinalDirection::East);
+		bPass = UMathUtility::IsFloatInDualRange
+		(
+			LocalDirection, 
+			CDConstraint.EastConstraint, 
+			CurrentCardinalDirection == ECardinalDirection::East
+		);
 		FinalCardinalDirection = bPass ? ECardinalDirection::East : FinalCardinalDirection;
-		bPass = UMathUtility::IsFloatInDualRange(LocalDirection, CDConstraint.NorthConstraint, CurrentCardinalDirection == ECardinalDirection::North);
+		bPass = UMathUtility::IsFloatInDualRange
+		(
+			LocalDirection, 
+			CDConstraint.NorthConstraint, 
+			CurrentCardinalDirection == ECardinalDirection::North
+		);
 		FinalCardinalDirection = bPass ? ECardinalDirection::North : FinalCardinalDirection;
 		AnimationUtilData.CardinalDirection = FinalCardinalDirection;
 	}
 }
 
-void UCharacterAnimationUtilityComponent::SetDirectionEnum()
+// Use a buffer to minimize flip floping of the direction
+void UCharacterAnimationUtilityComponent::UpdateDirectionEnum(const float& DirectionMin, const float& DirectionMax, const float& Buffer)
 {
-	if (IsCharacterMoving())
+	if (!IsCharacterMoving())
+		return;
+	bool bInRange = false;
+	if (AnimationUtilData.MovementDirection == EMovementDirection::Forward)
 	{
-		float LocalDirection = AnimationUtilData.Direction;
-		FVector4 MovementConstraint = AnimationUtilData.MovementDirectionConstraint;
-		EMovementDirection CurrentDirection = AnimationUtilData.MovementDirection;
-		AnimationUtilData.MovementDirection = UMathUtility::IsFloatInDualRange(LocalDirection, 
-			MovementConstraint, 
-			CurrentDirection == EMovementDirection::Forward) 
-			? EMovementDirection::Forward : EMovementDirection::Backward;
+		bInRange = FMath::IsWithinInclusive(AnimationUtilData.Direction, DirectionMin - Buffer, DirectionMax + Buffer);
 	}
-}
-
-void UCharacterAnimationUtilityComponent::SetCurrentSpeed()
-{
-	if (CharacterOwner)
+	else
 	{
-		AnimationUtilData.MovementSpeed = CharacterOwner->GetVelocity().Size();
+		bInRange = FMath::IsWithinInclusive(AnimationUtilData.Direction, DirectionMin + Buffer, DirectionMax - Buffer);
+	}
+	if (bInRange)
+	{
+		AnimationUtilData.MovementDirection = EMovementDirection::Forward;
+	}
+	else
+	{
+		AnimationUtilData.MovementDirection = EMovementDirection::Backward;
 	}
 }
 
@@ -206,12 +411,10 @@ void UCharacterAnimationUtilityComponent::SetCurrentDirection()
 {
 	if(CharacterOwner)
 	{
-		FVector CharacterVelocity = CharacterOwner->GetVelocity();
-		AnimationUtilData.VelocityRotator = FVector(CharacterVelocity.X, CharacterVelocity.Y, 0.f).Rotation();
+		const FVector CharacterVelocity = CharacterOwner->GetVelocity();
 		FRotator DeltaRotator = AnimationUtilData.VelocityRotator - CharacterOwner->GetActorRotation();
 		DeltaRotator.Normalize();
-		FRotator NormalizedDeltaRotator = DeltaRotator;
-		AnimationUtilData.Direction = AnimationUtilData.bCharacterIsMoving ? NormalizedDeltaRotator.Yaw : 0.0f;
+		AnimationUtilData.Direction = AnimationUtilData.bCharacterIsMoving ? DeltaRotator.Yaw : 0.0f;
 	}
 }
 
