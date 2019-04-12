@@ -22,7 +22,7 @@ public:
 	{
 	};
 
-	FNujasDelegate NujasTask;
+	FNujasDelegate Delegate;
 
 protected:
 	void DoWork() 
@@ -65,7 +65,7 @@ class NUJASCORE_API UThreadUtility : public UBlueprintFunctionLibrary
 
   public:
 	UFUNCTION(BlueprintCallable, Category = "Janus Thread Utility")
-	static FManualAsyncTaskHandle CreateAsyncTask(const FNujasDelegate Delegate);
+	static FManualAsyncTaskHandle CreateAsyncTask(const FNujasDelegate& Delegate);
 	UFUNCTION(BlueprintCallable, Category = "Janus Thread Utility")
 	static void InvalidateAsyncTask(UPARAM(ref) FManualAsyncTaskHandle& Handle);
 };

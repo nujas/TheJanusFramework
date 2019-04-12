@@ -2,11 +2,11 @@
 
 #include "ThreadUtility.h"
 
-FManualAsyncTaskHandle UThreadUtility::CreateAsyncTask(const FNujasDelegate Delegate)
+FManualAsyncTaskHandle UThreadUtility::CreateAsyncTask(const FNujasDelegate& Delegate)
 {
 	FManualAsyncTaskHandle Handle;
 	TSharedPtr<FAsyncTask<FNujasManualAsyncTask>> NewTask(new FAsyncTask<FNujasManualAsyncTask>());
-	NewTask->GetTask().NujasTask = Delegate;
+	NewTask->GetTask().Delegate = Delegate;
 	Handle.AsyncTask = NewTask;
 	Handle.StartAsyncTask();
 	return Handle;
