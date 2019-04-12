@@ -27,7 +27,7 @@ public:
 protected:
 	void DoWork() 
 	{
-		NujasTask.Execute();
+		Delegate.Execute();
 	};
 	FORCEINLINE TStatId GetStatId() const
 	{
