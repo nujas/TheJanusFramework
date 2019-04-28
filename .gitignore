@@ -3,3 +3,4 @@ Intermediate/*
 out
 node_modules
 .vscode-test/
+.vscode/ipch
