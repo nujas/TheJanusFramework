@@ -10,6 +10,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Animation/AnimInstance.h"
 
+#include "Animation/AnimMontage.h"
+
 #include "MontageUtilityComponent.generated.h"
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -30,8 +32,6 @@ class NUJASANIMATION_API UMontageUtilityComponent : public UActorComponent
 	virtual void BeginPlay() override;
 
   public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Montage Utility")
 	float GetCurrentMontageTime();
@@ -47,4 +47,10 @@ class NUJASANIMATION_API UMontageUtilityComponent : public UActorComponent
 
 	UFUNCTION(BlueprintCallable, Category = "Montage Utility")
 	void DisableRotationOverride();
+
+	UFUNCTION(BlueprintPure, Category = "Montage Utility")
+	virtual UAnimMontage* GetMontageForAction(FName MontageName, int32 Index);
+
+	UFUNCTION(BlueprintPure, Category = "Montage Utility")
+	virtual int32 GetMontageActionLastIndex(FName MontageRowName);
 };

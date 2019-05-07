@@ -181,7 +181,7 @@ class NUJASANIMATION_API UCharacterAnimationUtilityComponent : public UActorComp
 
   public:
 	/**
-	 * Publicly exposed method that will calculate all the neccessary data from the character
+	 * Publicly exposed method that will calculate all the necessary data from the character
 	 * And store into the AnimUtilData struct
 	 *
 	 * @param VerticalInput			 The forward/backward float coming from the controller (W/S, Left Stick up and down)

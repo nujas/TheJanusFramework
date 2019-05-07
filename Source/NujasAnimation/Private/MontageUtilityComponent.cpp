@@ -27,14 +27,6 @@ void UMontageUtilityComponent::BeginPlay()
 	// ...
 }
 
-// Called every frame
-void UMontageUtilityComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	// ...
-}
-
 float UMontageUtilityComponent::GetCurrentMontageTime()
 {
 	if (!Owner->GetMesh() || OwnerAnimInstance == nullptr)
@@ -66,4 +58,14 @@ void UMontageUtilityComponent::EnableRotationOverride()
 void UMontageUtilityComponent::DisableRotationOverride()
 {
 	OwnerMovement->bAllowPhysicsRotationDuringAnimRootMotion = false;
+}
+
+UAnimMontage* UMontageUtilityComponent::GetMontageForAction(FName MontageName, int32 Index)
+{
+	return nullptr;
+}
+
+int32 UMontageUtilityComponent::GetMontageActionLastIndex(FName MontageRowName)
+{
+	return -1;
 }
