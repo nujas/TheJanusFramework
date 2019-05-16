@@ -42,36 +42,38 @@ public:
 	bool IsTargetable();
 };
 
-UCLASS(ClassGroup = (NujasCombat))
-class NUJASCOMBAT_API AMarker : public AActor
-{
-	GENERATED_BODY()
-
-public:
-	AMarker();
-
-protected:
-	virtual void BeginPlay() override;
-
-public:
-	virtual void Tick(float DeltaTime) override;
-};
-
 /*
  * Component to aim the player at particular targets
  * For Debug purposes, it is desirable that the actor that owns this component
  *			 has an arrow component
- * TODO: Make the component assign an arrow at runtim if the specific qualifiers (toggles) are met
+ * 
  */
+
 UCLASS(ClassGroup = (NujasCombat), meta = (BlueprintSpawnableComponent))
 class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 	// Cache player rotation settings
-	void SaveRotationSettings();
+	inline void SaveRotationSettings();
 	// Restore player rotation settings once no longer targeting
-	void RestoreRotationSettings();
+	inline void RestoreRotationSettings();
+	// retrieve the arrow component for debugging
+	inline void InitializeArrowComponent(UArrowComponent* const ArrowComponent);
+	// update the character rotation config data to face the targeted actor
+	void UpdateFaceTargetConfig();
+	// Check if the target blocked or dead. If true, simply disable targeting
+	void CheckupTargetedActor();
+
+	// call this "sudo" every frame to orientate the character camera towards the selected actor
+	void UpdateCameraLock();
+
+	// detect if the currently targeted actor is blocked by some other object
+	bool IsTraceBlocked(AActor* Target) const;
+	// detect if the provided 2D location is within the viewport bounds
+	bool IsInViewport(FVector2D Position) const; // TODO: Move to Util?
+	// project the actor's V3 into a V2 on screen positions
+	FVector2D GetActorOnScreenPosition(AActor* Target, bool& bSuccess) const; // TODO: Move to Util?
 
 	UPROPERTY()
 	UCharacterMovementComponent* CharacterMovementComponent;
@@ -82,20 +84,27 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	UPROPERTY()
 	ACharacter* Owner;
 
+	// Data that influences the character rotation via character movement component
 	FRotationData PlayerRotationData;
-	
 	// Use this handle to periodically check if the target is still visible
 	FTimerHandle TargetStillInSightHandle;
+	// Handle responsible for updating the camera if there is a valid actor to look at
+	FTimerHandle CameraLockUpdateHandle;
 
 public:
 	// Sets default values for this component's properties
 	UDynamicTargetingComponent();
 
+	// TODO: I don't really have anything in store for Valid collisions. Maybe in the future we could use them for something
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Channels")
-	TArray<TEnumAsByte<EObjectTypeQuery>> ValidCollisionTraces; // Pawn by defualt
+	TArray<TEnumAsByte<EObjectTypeQuery>> ValidCollisionTraces;
+	// Use these channels if the targeted actor is behind one of them
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Channels")
 	TArray<TEnumAsByte<EObjectTypeQuery>> BlockCollisionTraces;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
+	float MaxDistanceToTargetSquared = 6250000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
+	float MinDistanceToTargetSquared = 2500.f;
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -103,9 +112,18 @@ protected:
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-	void InitializeArrowComponent(UArrowComponent* const ArrowComponent);
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void DisableCameraLock();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void EnableCameraLock();
-	AActor* GetSelectedActor() const;
-	bool IsValidActorSelected() const;
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	void ToggleCameraLock();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	AActor* FindTargetOnScreen();
+
+	// Getters
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	inline AActor* GetSelectedActor() const;
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	inline bool IsValidActorSelected() const;
 };
