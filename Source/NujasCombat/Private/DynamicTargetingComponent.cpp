@@ -137,16 +137,16 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 		const FName& ActorName = OnScreenActor->GetFName();
 		if(ActorHorizontalMovementMap.Contains(ActorName))
 		{
-			ActorHorizontalMovementMap.Add(ActorName, FHorizontalActorMovementData(ActorScreenSpacePos.X));
-		}
-		else
-		{
 			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
 			const float CurrentSpeed = ActorScreenSpacePos.X - ActorHorizontalMovementMap[ActorName].LastKnownXPosition;
 			ActorHorizontalMovementMap[ActorName].LastKnownXPosition = ActorScreenSpacePos.X;
 			ActorHorizontalMovementMap[ActorName].LastUpdatedXSpeed = CurrentSpeed;
 			// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
 			SummarizedSpeeds += CurrentSpeed;
+		}
+		else
+		{
+			ActorHorizontalMovementMap.Add(ActorName, FHorizontalActorMovementData(ActorScreenSpacePos.X));
 		}
 	}
 	if(Owner)
