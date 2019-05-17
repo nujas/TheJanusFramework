@@ -117,6 +117,7 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
 	TMap<FName, FHorizontalActorMovementData> ActorHorizontalMovementMap;
 	bool bReceiveStrafeData;
+
 public:
 	// Sets default values for this component's properties
 	UDynamicTargetingComponent();
@@ -153,7 +154,7 @@ public:
 
 	//Strafe
 	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
-	inline void SetReceiveStrafeData(bool bDecision) { if(!SelectedActor) bReceiveStrafeData = bDecision; }; // Disallow toggling of strafe data if manual targeting is enabled
+	void SetReceiveStrafeData(bool bDecision) { if(!SelectedActor) bReceiveStrafeData = bDecision; }; // Disallow toggling of strafe data if manual targeting is enabled
 
 	// Getters
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")

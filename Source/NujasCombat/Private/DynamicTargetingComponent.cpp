@@ -29,7 +29,6 @@ void UDynamicTargetingComponent::RestoreRotationSettings()
 
 UDynamicTargetingComponent::UDynamicTargetingComponent()
 {
-	// NO TICK! All the targeting is handled by timers
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
@@ -130,9 +129,9 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 	float SummarizedSpeeds = 0.f;
 	for (AActor*& OnScreenActor : ActorsOnScreen)
 	{
-		bool bSuccessfullPorjection = false;
-		const FVector2D ActorScreenSpacePos = GetActorOnScreenPosition(OnScreenActor, bSuccessfullPorjection);
-		if(!bSuccessfullPorjection) continue;
+		bool bSuccessfulProjection = false;
+		const FVector2D ActorScreenSpacePos = GetActorOnScreenPosition(OnScreenActor, bSuccessfulProjection);
+		if(!bSuccessfulProjection) continue;
 		// if the actor's X is not present in the map, add it. 
 		// The first time an enemy is added to the map it will not be taken into account
 		const FName& ActorName = OnScreenActor->GetFName();
