@@ -30,7 +30,7 @@ void UDynamicTargetingComponent::RestoreRotationSettings()
 UDynamicTargetingComponent::UDynamicTargetingComponent()
 {
 	// NO TICK! All the targeting is handled by timers
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UDynamicTargetingComponent::BeginPlay()
@@ -57,7 +57,7 @@ void UDynamicTargetingComponent::BeginPlay()
 void UDynamicTargetingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	// TODO: Interpolate the camera
+	UpdateStrafeAssist();
 }
 
 void UDynamicTargetingComponent::InitializeArrowComponent(UArrowComponent* const ArrowComponent)
@@ -121,6 +121,45 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 	Owner->GetController()->SetControlRotation(LookAtRotation);
 }
 
+void UDynamicTargetingComponent::UpdateStrafeAssist()
+{
+	if(!bReceiveStrafeData) return;
+	// collect all of the enemies on screen
+	FindAllActorsOnScreen(ActorsOnScreen);
+	// project their world space position into 2D screen space and take the X
+	float SummarizedSpeeds = 0.f;
+	for (AActor*& OnScreenActor : ActorsOnScreen)
+	{
+		bool bSuccessfullPorjection = false;
+		const FVector2D ActorScreenSpacePos = GetActorOnScreenPosition(OnScreenActor, bSuccessfullPorjection);
+		if(!bSuccessfullPorjection) continue;
+		// if the actor's X is not present in the map, add it. 
+		// The first time an enemy is added to the map it will not be taken into account
+		const FName& ActorName = OnScreenActor->GetFName();
+		if(ActorHorizontalMovementMap.Contains(ActorName))
+		{
+			ActorHorizontalMovementMap.Add(ActorName, FHorizontalActorMovementData(ActorScreenSpacePos.X));
+		}
+		else
+		{
+			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
+			const float CurrentSpeed = ActorScreenSpacePos.X - ActorHorizontalMovementMap[ActorName].LastKnownXPosition;
+			ActorHorizontalMovementMap[ActorName].LastKnownXPosition = ActorScreenSpacePos.X;
+			ActorHorizontalMovementMap[ActorName].LastUpdatedXSpeed = CurrentSpeed;
+			// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
+			SummarizedSpeeds += CurrentSpeed;
+		}
+	}
+	if(Owner)
+	{
+		// apply the summarized rotation to the yaw of the player via interpolation
+		const AController* Controller = Owner->GetController();
+		FRotator ControllerRotation = Controller->GetControlRotation();
+		ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeeds, FApp::GetDeltaTime(), 10.f);
+		Owner->GetController()->SetControlRotation(ControllerRotation);
+	}
+}
+
 bool UDynamicTargetingComponent::IsTraceBlocked(AActor* Target) const
 {
 	if(!(BlockCollisionTraces.Num() > 0))
@@ -144,7 +183,7 @@ bool UDynamicTargetingComponent::IsTraceBlocked(AActor* Target) const
 void UDynamicTargetingComponent::DisableCameraLock()
 {
 	if (!SelectedActor) return;
-
+	bReceiveStrafeData = true;
 	if (SelectedActor->GetClass()->ImplementsInterface(UTargetable::StaticClass()))
 	{
 		ITargetable::Execute_OnDeselected(SelectedActor);
@@ -164,6 +203,7 @@ void UDynamicTargetingComponent::DisableCameraLock()
 void UDynamicTargetingComponent::EnableCameraLock()
 {
 	if (!SelectedActor->GetClass()->ImplementsInterface(UTargetable::StaticClass())) return;
+	bReceiveStrafeData = false;
 	SaveRotationSettings();
 	ITargetable::Execute_OnSelected(SelectedActor);
 	UpdateFaceTargetConfig();
@@ -198,7 +238,7 @@ void UDynamicTargetingComponent::ToggleCameraLock()
 	}
 	else
 	{
-		SelectedActor = FindTargetOnScreen();
+		SelectedActor = FindClosestTargetOnScreen();
 		if (SelectedActor)
 		{
 			EnableCameraLock();
@@ -206,32 +246,12 @@ void UDynamicTargetingComponent::ToggleCameraLock()
 	}
 }
 
-AActor* UDynamicTargetingComponent::FindTargetOnScreen()
+AActor* UDynamicTargetingComponent::FindClosestTargetOnScreen()
 {
 	AActor* FinalSelectedActor = nullptr;
 	if (Owner)
 	{
-		TArray<AActor*> TargetableActors;
-		TArray<AActor*> PotentialTargets;
-		UGameplayStatics::GetAllActorsWithInterface(Owner->GetWorld(), UTargetable::StaticClass(), TargetableActors);
-		for (AActor* TargetableActor : TargetableActors)
-		{
-			if (TargetableActor->GetClass()->ImplementsInterface(UTargetable::StaticClass()))
-			{
-				if (ITargetable::Execute_IsTargetable(TargetableActor))
-				{
-					bool bOnScreen = false;
-					const float DistSquared = FVector::DistSquared(Owner->GetActorLocation(), TargetableActor->GetActorLocation());
-					if(IsInViewport(GetActorOnScreenPosition(TargetableActor, bOnScreen)) && bOnScreen && DistSquared <= MaxDistanceToTargetSquared)
-					{
-						if (!IsTraceBlocked(TargetableActor))
-						{
-							PotentialTargets.Add(TargetableActor);
-						}
-					}
-				}
-			}
-		}
+		FindAllActorsOnScreen(ActorsOnScreen);
 		float DistanceFromCenterOfViewport = BIG_NUMBER;
 		int32 SizeX = -1;
 		int32 SizeY = -1;
@@ -240,7 +260,7 @@ AActor* UDynamicTargetingComponent::FindTargetOnScreen()
 			PC->GetViewportSize(SizeX, SizeY);
 		}
 		const float SizeXFloated = float(SizeX) / 2.f;
-		for (AActor* const PotentialTarget : PotentialTargets)
+		for (AActor* const PotentialTarget : ActorsOnScreen)
 		{
 			bool bSuccess = false;
 			const FVector2D ActorScreenPosition = GetActorOnScreenPosition(PotentialTarget, bSuccess);
@@ -253,6 +273,32 @@ AActor* UDynamicTargetingComponent::FindTargetOnScreen()
 		}
 	}
 	return FinalSelectedActor;
+}
+
+void UDynamicTargetingComponent::FindAllActorsOnScreen(TArray<AActor*>& OutActors)
+{
+	TArray<AActor*> FoundActors;
+	TArray<AActor*> TargetableActors;
+	UGameplayStatics::GetAllActorsWithInterface(Owner->GetWorld(), UTargetable::StaticClass(), TargetableActors);
+	for (AActor*& TargetableActor : TargetableActors)
+	{
+		if (TargetableActor->GetClass()->ImplementsInterface(UTargetable::StaticClass()))
+		{
+			if (ITargetable::Execute_IsTargetable(TargetableActor))
+			{
+				bool bOnScreen = false;
+				const float DistSquared = FVector::DistSquared(Owner->GetActorLocation(), TargetableActor->GetActorLocation());
+				if(IsInViewport(GetActorOnScreenPosition(TargetableActor, bOnScreen)) && bOnScreen && DistSquared <= MaxDistanceToTargetSquared)
+				{
+					if (!IsTraceBlocked(TargetableActor))
+					{
+						FoundActors.Add(TargetableActor);
+					}
+				}
+			}
+		}
+	}
+	OutActors = FoundActors;
 }
 
 bool UDynamicTargetingComponent::IsInViewport(FVector2D Position) const
@@ -274,14 +320,4 @@ FVector2D UDynamicTargetingComponent::GetActorOnScreenPosition(AActor* Target, b
 	FVector2D ScreenPosition;
 	bSuccess = UGameplayStatics::ProjectWorldToScreen(Cast<APlayerController>(Owner->GetController()), Target->GetActorLocation(), ScreenPosition);
 	return ScreenPosition;
-}
-
-AActor* UDynamicTargetingComponent::GetSelectedActor() const
-{
-	return SelectedActor;
-}
-
-bool UDynamicTargetingComponent::IsValidActorSelected() const
-{
-	return SelectedActor;
 }

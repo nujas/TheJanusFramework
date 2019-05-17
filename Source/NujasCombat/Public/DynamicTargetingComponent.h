@@ -20,6 +20,24 @@ struct FRotationData
 	uint8 bOrientRotationToMovement : 1;
 };
 
+USTRUCT()
+struct FHorizontalActorMovementData
+{
+	GENERATED_BODY()
+	FHorizontalActorMovementData()
+	{
+		LastKnownXPosition = 0.f;
+		LastUpdatedXSpeed = 0.f;
+	};
+	FHorizontalActorMovementData(float XPosition)
+	{
+		LastKnownXPosition = XPosition;
+		LastUpdatedXSpeed = 0.f;
+	}
+	float LastKnownXPosition = NAN;
+	float LastUpdatedXSpeed = NAN;
+};
+
 UINTERFACE(Blueprintable)
 class NUJASCOMBAT_API UTargetable : public UInterface
 {
@@ -67,6 +85,8 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 
 	// call this "sudo" every frame to orientate the character camera towards the selected actor
 	void UpdateCameraLock();
+	// Use this to collect strafe data for the player to align the camera towards the enemies without moving the joystick while strafing
+	void UpdateStrafeAssist();
 
 	// detect if the currently targeted actor is blocked by some other object
 	bool IsTraceBlocked(AActor* Target) const;
@@ -91,6 +111,12 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	// Handle responsible for updating the camera if there is a valid actor to look at
 	FTimerHandle CameraLockUpdateHandle;
 
+	// Cache for on screen actors
+	TArray<AActor*> ActorsOnScreen;
+
+	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
+	TMap<FName, FHorizontalActorMovementData> ActorHorizontalMovementMap;
+	bool bReceiveStrafeData;
 public:
 	// Sets default values for this component's properties
 	UDynamicTargetingComponent();
@@ -112,6 +138,8 @@ protected:
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	
+	// Camera Lock
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void DisableCameraLock();
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
@@ -119,11 +147,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void ToggleCameraLock();
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
-	AActor* FindTargetOnScreen();
+	AActor* FindClosestTargetOnScreen();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	void FindAllActorsOnScreen(TArray<AActor*>& OutActors);
+
+	//Strafe
+	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
+	inline void SetReceiveStrafeData(bool bDecision) { if(!SelectedActor) bReceiveStrafeData = bDecision; }; // Disallow toggling of strafe data if manual targeting is enabled
 
 	// Getters
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
-	inline AActor* GetSelectedActor() const;
+	inline AActor* GetSelectedActor() const { return SelectedActor; };
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
-	inline bool IsValidActorSelected() const;
+	inline bool IsValidActorSelected() const { return SelectedActor; };
 };
