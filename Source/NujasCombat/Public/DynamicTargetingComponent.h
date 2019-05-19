@@ -90,10 +90,6 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 
 	// detect if the currently targeted actor is blocked by some other object
 	bool IsTraceBlocked(AActor* Target) const;
-	// detect if the provided 2D location is within the viewport bounds
-	bool IsInViewport(FVector2D Position) const; // TODO: Move to Util?
-	// project the actor's V3 into a V2 on screen positions
-	FVector2D GetActorOnScreenPosition(AActor* Target, bool& bSuccess) const; // TODO: Move to Util?
 
 	UPROPERTY()
 	UCharacterMovementComponent* CharacterMovementComponent;
@@ -103,20 +99,21 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	AActor* SelectedActor;
 	UPROPERTY()
 	ACharacter* Owner;
-
+	UPROPERTY()
+	APlayerController* PlayerController;
 	// Data that influences the character rotation via character movement component
 	FRotationData PlayerRotationData;
 	// Use this handle to periodically check if the target is still visible
 	FTimerHandle TargetStillInSightHandle;
 	// Handle responsible for updating the camera if there is a valid actor to look at
 	FTimerHandle CameraLockUpdateHandle;
-
+	// Utilize for updating the component strafe assist feature
+	FTimerHandle StrafeAssistHandle;
 	// Cache for on screen actors
 	TArray<AActor*> ActorsOnScreen;
 
 	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
 	TMap<FName, FHorizontalActorMovementData> ActorHorizontalMovementMap;
-	bool bReceiveStrafeData;
 
 public:
 	// Sets default values for this component's properties
@@ -137,9 +134,7 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-	
+
 	// Camera Lock
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void DisableCameraLock();
@@ -154,8 +149,9 @@ public:
 
 	//Strafe
 	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
-	void SetReceiveStrafeData(bool bDecision) { if(!SelectedActor) bReceiveStrafeData = bDecision; }; // Disallow toggling of strafe data if manual targeting is enabled
-
+	void ToggleStrafeAssist(bool bDecision); // Disallow toggling of strafe data if manual targeting is enabled
+	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
+	void InvalidateStrafeAssist();
 	// Getters
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	inline AActor* GetSelectedActor() const { return SelectedActor; };

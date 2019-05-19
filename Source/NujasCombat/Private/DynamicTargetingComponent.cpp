@@ -3,8 +3,9 @@
 #include "DynamicTargetingComponent.h"
 #include "Components/ArrowComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h"
 #include "Core/Public/Misc/App.h"
+#include "ViewportUtility.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 void UDynamicTargetingComponent::SaveRotationSettings()
@@ -29,7 +30,7 @@ void UDynamicTargetingComponent::RestoreRotationSettings()
 
 UDynamicTargetingComponent::UDynamicTargetingComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 void UDynamicTargetingComponent::BeginPlay()
@@ -41,6 +42,7 @@ void UDynamicTargetingComponent::BeginPlay()
 	{
 		InitializeArrowComponent(Owner->FindComponentByClass<UArrowComponent>());
 		CharacterMovementComponent = Owner->FindComponentByClass<UCharacterMovementComponent>();
+		PlayerController = Cast<APlayerController>(Owner->GetController());
 	}
 	// If Blocking and Valid Query arrays contain same members, blocking takes priority and removes members from Valid array
 	for (const EObjectTypeQuery& ObjectTypeQuery : BlockCollisionTraces)
@@ -50,13 +52,6 @@ void UDynamicTargetingComponent::BeginPlay()
 			ValidCollisionTraces.Remove(ObjectTypeQuery);
 		}
 	}
-}
-
-// Called every frame
-void UDynamicTargetingComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	UpdateStrafeAssist();
 }
 
 void UDynamicTargetingComponent::InitializeArrowComponent(UArrowComponent* const ArrowComponent)
@@ -116,13 +111,11 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 
 	FRotator LookAtRotation = (SelectedActorLocation - OwnerLocation).Rotation();
 	LookAtRotation = FMath::RInterpConstantTo(ControlRotation, LookAtRotation, FApp::GetDeltaTime(), 300.f);
-
-	Owner->GetController()->SetControlRotation(LookAtRotation);
+	PlayerController->SetControlRotation(LookAtRotation);
 }
 
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
-	if(!bReceiveStrafeData) return;
 	// collect all of the enemies on screen
 	FindAllActorsOnScreen(ActorsOnScreen);
 	// project their world space position into 2D screen space and take the X
@@ -130,7 +123,7 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 	for (AActor*& OnScreenActor : ActorsOnScreen)
 	{
 		bool bSuccessfulProjection = false;
-		const FVector2D ActorScreenSpacePos = GetActorOnScreenPosition(OnScreenActor, bSuccessfulProjection);
+		const FVector2D ActorScreenSpacePos = UViewportUtility::GetActorOnScreenPosition(OnScreenActor, PlayerController, bSuccessfulProjection);
 		if(!bSuccessfulProjection) continue;
 		// if the actor's X is not present in the map, add it. 
 		// The first time an enemy is added to the map it will not be taken into account
@@ -149,14 +142,10 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 			ActorHorizontalMovementMap.Add(ActorName, FHorizontalActorMovementData(ActorScreenSpacePos.X));
 		}
 	}
-	if(Owner)
-	{
-		// apply the summarized rotation to the yaw of the player via interpolation
-		const AController* Controller = Owner->GetController();
-		FRotator ControllerRotation = Controller->GetControlRotation();
-		ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeeds, FApp::GetDeltaTime(), 10.f);
-		Owner->GetController()->SetControlRotation(ControllerRotation);
-	}
+	// apply the summarized rotation to the yaw of the player via interpolation
+	FRotator ControllerRotation = PlayerController->GetControlRotation();
+	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeeds, FApp::GetDeltaTime(), 10.f);
+	PlayerController->SetControlRotation(ControllerRotation);
 }
 
 bool UDynamicTargetingComponent::IsTraceBlocked(AActor* Target) const
@@ -182,7 +171,6 @@ bool UDynamicTargetingComponent::IsTraceBlocked(AActor* Target) const
 void UDynamicTargetingComponent::DisableCameraLock()
 {
 	if (!SelectedActor) return;
-	bReceiveStrafeData = true;
 	if (SelectedActor->GetClass()->ImplementsInterface(UTargetable::StaticClass()))
 	{
 		ITargetable::Execute_OnDeselected(SelectedActor);
@@ -196,13 +184,13 @@ void UDynamicTargetingComponent::DisableCameraLock()
 		Owner->GetWorldTimerManager().ClearTimer(CameraLockUpdateHandle);
 		Owner->GetWorldTimerManager().ClearTimer(TargetStillInSightHandle);
 	}
-	Owner->GetController()->SetIgnoreLookInput(false);
+	PlayerController->SetIgnoreLookInput(false);
 }
 
 void UDynamicTargetingComponent::EnableCameraLock()
 {
 	if (!SelectedActor->GetClass()->ImplementsInterface(UTargetable::StaticClass())) return;
-	bReceiveStrafeData = false;
+	InvalidateStrafeAssist();
 	SaveRotationSettings();
 	ITargetable::Execute_OnSelected(SelectedActor);
 	UpdateFaceTargetConfig();
@@ -226,7 +214,7 @@ void UDynamicTargetingComponent::EnableCameraLock()
 			true
 		);
 	}
-	Owner->GetController()->SetIgnoreLookInput(true);
+	PlayerController->SetIgnoreLookInput(true);
 }
 
 void UDynamicTargetingComponent::ToggleCameraLock()
@@ -252,17 +240,13 @@ AActor* UDynamicTargetingComponent::FindClosestTargetOnScreen()
 	{
 		FindAllActorsOnScreen(ActorsOnScreen);
 		float DistanceFromCenterOfViewport = BIG_NUMBER;
-		int32 SizeX = -1;
-		int32 SizeY = -1;
-		if(const APlayerController* PC = Cast<APlayerController>(Owner->GetController()))
-		{
-			PC->GetViewportSize(SizeX, SizeY);
-		}
-		const float SizeXFloated = float(SizeX) / 2.f;
+		FVector2D ScreenSize;
+		UViewportUtility::GetViewportSize(PlayerController, ScreenSize);
+		const float SizeXFloated = ScreenSize.X / 2.f;
 		for (AActor* const PotentialTarget : ActorsOnScreen)
 		{
 			bool bSuccess = false;
-			const FVector2D ActorScreenPosition = GetActorOnScreenPosition(PotentialTarget, bSuccess);
+			const FVector2D ActorScreenPosition = UViewportUtility::GetActorOnScreenPosition(PotentialTarget, PlayerController, bSuccess);
 			const float CurrentDistanceFromScreen = FMath::Abs(ActorScreenPosition.X - SizeXFloated);
 			if (CurrentDistanceFromScreen < DistanceFromCenterOfViewport && bSuccess)
 			{
@@ -287,7 +271,9 @@ void UDynamicTargetingComponent::FindAllActorsOnScreen(TArray<AActor*>& OutActor
 			{
 				bool bOnScreen = false;
 				const float DistSquared = FVector::DistSquared(Owner->GetActorLocation(), TargetableActor->GetActorLocation());
-				if(IsInViewport(GetActorOnScreenPosition(TargetableActor, bOnScreen)) && bOnScreen && DistSquared <= MaxDistanceToTargetSquared)
+				if(UViewportUtility::IsInViewport(UViewportUtility::GetActorOnScreenPosition(TargetableActor, PlayerController, bOnScreen), PlayerController)
+					&& bOnScreen 
+					&& DistSquared <= MaxDistanceToTargetSquared)
 				{
 					if (!IsTraceBlocked(TargetableActor))
 					{
@@ -300,23 +286,32 @@ void UDynamicTargetingComponent::FindAllActorsOnScreen(TArray<AActor*>& OutActor
 	OutActors = FoundActors;
 }
 
-bool UDynamicTargetingComponent::IsInViewport(FVector2D Position) const
+void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
 {
-	if(APlayerController* PC = Cast<APlayerController>(Owner->GetController()))
+	if(SelectedActor || !Owner) 
+		return;
+	if(bDecision && !StrafeAssistHandle.IsValid())
 	{
-		const int32 PosX = Position.X;
-		const int32 PosY = Position.Y;
-		int32 SizeX = -1;
-		int32 SizeY = -1;
-		PC->GetViewportSize(SizeX, SizeY);
-		return (PosX > 0 && PosY > 0 && PosX <= SizeX && PosY <= SizeY);
+		Owner->GetWorldTimerManager().SetTimer
+		(
+			StrafeAssistHandle, 
+			this, 
+			&UDynamicTargetingComponent::UpdateStrafeAssist, 
+			0.01f, 
+			true
+		);
 	}
-	return false;
+	else
+	{
+		InvalidateStrafeAssist();
+	}
 }
 
-FVector2D UDynamicTargetingComponent::GetActorOnScreenPosition(AActor* Target, bool& bSuccess) const
+void UDynamicTargetingComponent::InvalidateStrafeAssist()
 {
-	FVector2D ScreenPosition;
-	bSuccess = UGameplayStatics::ProjectWorldToScreen(Cast<APlayerController>(Owner->GetController()), Target->GetActorLocation(), ScreenPosition);
-	return ScreenPosition;
+	if(Owner)
+	{
+		Owner->GetWorldTimerManager().ClearTimer(CameraLockUpdateHandle);
+		ActorHorizontalMovementMap.Empty();
+	}
 }
