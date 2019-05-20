@@ -117,7 +117,7 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
 	// collect all of the enemies on screen
-	FindAllActorsOnScreen(ActorsOnScreen);
+	ActorsOnScreen = FindAllActorsOnScreen();
 	// project their world space position into 2D screen space and take the X
 	float SummarizedSpeeds = 0.f;
 	for (AActor*& OnScreenActor : ActorsOnScreen)
@@ -127,19 +127,20 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 		if(!bSuccessfulProjection) continue;
 		// if the actor's X is not present in the map, add it. 
 		// The first time an enemy is added to the map it will not be taken into account
-		const FName& ActorName = OnScreenActor->GetFName();
-		if(ActorHorizontalMovementMap.Contains(ActorName))
+		const uint32& ActorID = OnScreenActor->GetUniqueID();
+		if(ActorHorizontalMovementMap.Contains(ActorID))
 		{
+			FHorizontalActorMovementData& MovementData = ActorHorizontalMovementMap[ActorID];
 			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
-			const float CurrentSpeed = ActorScreenSpacePos.X - ActorHorizontalMovementMap[ActorName].LastKnownXPosition;
-			ActorHorizontalMovementMap[ActorName].LastKnownXPosition = ActorScreenSpacePos.X;
-			ActorHorizontalMovementMap[ActorName].LastUpdatedXSpeed = CurrentSpeed;
+			const float CurrentSpeed = ActorScreenSpacePos.X - MovementData.LastKnownXPosition;
+			MovementData.LastKnownXPosition = ActorScreenSpacePos.X;
+			MovementData.LastUpdatedXSpeed = CurrentSpeed;
 			// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
 			SummarizedSpeeds += CurrentSpeed;
 		}
 		else
 		{
-			ActorHorizontalMovementMap.Add(ActorName, FHorizontalActorMovementData(ActorScreenSpacePos.X));
+			ActorHorizontalMovementMap.Add(ActorID, FHorizontalActorMovementData(ActorScreenSpacePos.X));
 		}
 	}
 	// apply the summarized rotation to the yaw of the player via interpolation
@@ -148,7 +149,7 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 	PlayerController->SetControlRotation(ControllerRotation);
 }
 
-bool UDynamicTargetingComponent::IsTraceBlocked(AActor* Target) const
+bool UDynamicTargetingComponent::IsTraceBlocked(const AActor* Target) const
 {
 	if(!(BlockCollisionTraces.Num() > 0))
 		return false;
@@ -238,7 +239,7 @@ AActor* UDynamicTargetingComponent::FindClosestTargetOnScreen()
 	AActor* FinalSelectedActor = nullptr;
 	if (Owner)
 	{
-		FindAllActorsOnScreen(ActorsOnScreen);
+		ActorsOnScreen = FindAllActorsOnScreen();
 		float DistanceFromCenterOfViewport = BIG_NUMBER;
 		FVector2D ScreenSize;
 		UViewportUtility::GetViewportSize(PlayerController, ScreenSize);
@@ -258,7 +259,7 @@ AActor* UDynamicTargetingComponent::FindClosestTargetOnScreen()
 	return FinalSelectedActor;
 }
 
-void UDynamicTargetingComponent::FindAllActorsOnScreen(TArray<AActor*>& OutActors)
+TArray<AActor*> UDynamicTargetingComponent::FindAllActorsOnScreen()
 {
 	TArray<AActor*> FoundActors;
 	TArray<AActor*> TargetableActors;
@@ -283,7 +284,7 @@ void UDynamicTargetingComponent::FindAllActorsOnScreen(TArray<AActor*>& OutActor
 			}
 		}
 	}
-	OutActors = FoundActors;
+	return FoundActors;
 }
 
 void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
@@ -301,7 +302,7 @@ void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
 			true
 		);
 	}
-	else
+	else if(!bDecision)
 	{
 		InvalidateStrafeAssist();
 	}
@@ -311,7 +312,7 @@ void UDynamicTargetingComponent::InvalidateStrafeAssist()
 {
 	if(Owner)
 	{
-		Owner->GetWorldTimerManager().ClearTimer(CameraLockUpdateHandle);
+		Owner->GetWorldTimerManager().ClearTimer(StrafeAssistHandle);
 		ActorHorizontalMovementMap.Empty();
 	}
 }

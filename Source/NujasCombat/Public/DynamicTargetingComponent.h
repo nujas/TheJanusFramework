@@ -34,6 +34,7 @@ struct FHorizontalActorMovementData
 		LastKnownXPosition = XPosition;
 		LastUpdatedXSpeed = 0.f;
 	}
+	// NAN : the actor's data has been created but not yet calculated
 	float LastKnownXPosition = NAN;
 	float LastUpdatedXSpeed = NAN;
 };
@@ -67,6 +68,9 @@ public:
  * 
  */
 
+static const float MAX_DISTANCE_TO_TARGET_SQUARED = 6250000.f;
+static const float MIN_DISTANCE_TO_TARGET_SQUARED = 2500.f;
+
 UCLASS(ClassGroup = (NujasCombat), meta = (BlueprintSpawnableComponent))
 class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 {
@@ -89,7 +93,7 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	void UpdateStrafeAssist();
 
 	// detect if the currently targeted actor is blocked by some other object
-	bool IsTraceBlocked(AActor* Target) const;
+	bool IsTraceBlocked(const AActor* Target) const;
 
 	UPROPERTY()
 	UCharacterMovementComponent* CharacterMovementComponent;
@@ -101,19 +105,26 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	ACharacter* Owner;
 	UPROPERTY()
 	APlayerController* PlayerController;
+
+	UPROPERTY()
 	// Data that influences the character rotation via character movement component
 	FRotationData PlayerRotationData;
+	UPROPERTY()
 	// Use this handle to periodically check if the target is still visible
 	FTimerHandle TargetStillInSightHandle;
+	UPROPERTY()
 	// Handle responsible for updating the camera if there is a valid actor to look at
 	FTimerHandle CameraLockUpdateHandle;
+	UPROPERTY()
 	// Utilize for updating the component strafe assist feature
 	FTimerHandle StrafeAssistHandle;
+	UPROPERTY()
 	// Cache for on screen actors
 	TArray<AActor*> ActorsOnScreen;
 
+	UPROPERTY()
 	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
-	TMap<FName, FHorizontalActorMovementData> ActorHorizontalMovementMap;
+	TMap<uint32, FHorizontalActorMovementData> ActorHorizontalMovementMap;
 
 public:
 	// Sets default values for this component's properties
@@ -126,9 +137,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Channels")
 	TArray<TEnumAsByte<EObjectTypeQuery>> BlockCollisionTraces;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
-	float MaxDistanceToTargetSquared = 6250000.f;
+	float MaxDistanceToTargetSquared = MAX_DISTANCE_TO_TARGET_SQUARED;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
-	float MinDistanceToTargetSquared = 2500.f;
+	float MinDistanceToTargetSquared = MIN_DISTANCE_TO_TARGET_SQUARED;
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
@@ -145,13 +156,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	AActor* FindClosestTargetOnScreen();
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
-	void FindAllActorsOnScreen(TArray<AActor*>& OutActors);
+	TArray<AActor*> FindAllActorsOnScreen();
 
 	//Strafe
 	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
 	void ToggleStrafeAssist(bool bDecision); // Disallow toggling of strafe data if manual targeting is enabled
 	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
 	void InvalidateStrafeAssist();
+
 	// Getters
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	inline AActor* GetSelectedActor() const { return SelectedActor; };
