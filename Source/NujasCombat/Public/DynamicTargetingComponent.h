@@ -20,6 +20,25 @@ struct FRotationData
 	uint8 bOrientRotationToMovement : 1;
 };
 
+USTRUCT()
+struct FHorizontalActorMovementData
+{
+	GENERATED_BODY()
+	FHorizontalActorMovementData()
+	{
+		LastKnownXPosition = 0.f;
+		LastUpdatedXSpeed = 0.f;
+	};
+	FHorizontalActorMovementData(float XPosition)
+	{
+		LastKnownXPosition = XPosition;
+		LastUpdatedXSpeed = 0.f;
+	}
+	// NAN : the actor's data has been created but not yet calculated
+	float LastKnownXPosition = NAN;
+	float LastUpdatedXSpeed = NAN;
+};
+
 UINTERFACE(Blueprintable)
 class NUJASCOMBAT_API UTargetable : public UInterface
 {
@@ -42,36 +61,39 @@ public:
 	bool IsTargetable();
 };
 
-UCLASS(ClassGroup = (NujasCombat))
-class NUJASCOMBAT_API AMarker : public AActor
-{
-	GENERATED_BODY()
-
-public:
-	AMarker();
-
-protected:
-	virtual void BeginPlay() override;
-
-public:
-	virtual void Tick(float DeltaTime) override;
-};
-
 /*
  * Component to aim the player at particular targets
  * For Debug purposes, it is desirable that the actor that owns this component
  *			 has an arrow component
- * TODO: Make the component assign an arrow at runtim if the specific qualifiers (toggles) are met
+ * 
  */
+
+static const float MAX_DISTANCE_TO_TARGET_SQUARED = 6250000.f;
+static const float MIN_DISTANCE_TO_TARGET_SQUARED = 2500.f;
+
 UCLASS(ClassGroup = (NujasCombat), meta = (BlueprintSpawnableComponent))
 class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 	// Cache player rotation settings
-	void SaveRotationSettings();
+	inline void SaveRotationSettings();
 	// Restore player rotation settings once no longer targeting
-	void RestoreRotationSettings();
+	inline void RestoreRotationSettings();
+	// retrieve the arrow component for debugging
+	inline void InitializeArrowComponent(UArrowComponent* const ArrowComponent);
+	// update the character rotation config data to face the targeted actor
+	void UpdateFaceTargetConfig();
+	// Check if the target blocked or dead. If true, simply disable targeting
+	void CheckupTargetedActor();
+
+	// call this "sudo" every frame to orientate the character camera towards the selected actor
+	void UpdateCameraLock();
+	// Use this to collect strafe data for the player to align the camera towards the enemies without moving the joystick while strafing
+	void UpdateStrafeAssist();
+
+	// detect if the currently targeted actor is blocked by some other object
+	bool IsTraceBlocked(const AActor* Target) const;
 
 	UPROPERTY()
 	UCharacterMovementComponent* CharacterMovementComponent;
@@ -81,31 +103,70 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	AActor* SelectedActor;
 	UPROPERTY()
 	ACharacter* Owner;
+	UPROPERTY()
+	APlayerController* PlayerController;
 
+	UPROPERTY()
+	// Data that influences the character rotation via character movement component
 	FRotationData PlayerRotationData;
-	
+	UPROPERTY()
 	// Use this handle to periodically check if the target is still visible
 	FTimerHandle TargetStillInSightHandle;
+	UPROPERTY()
+	// Handle responsible for updating the camera if there is a valid actor to look at
+	FTimerHandle CameraLockUpdateHandle;
+	UPROPERTY()
+	// Utilize for updating the component strafe assist feature
+	FTimerHandle StrafeAssistHandle;
+	UPROPERTY()
+	// Cache for on screen actors
+	TArray<AActor*> ActorsOnScreen;
+
+	UPROPERTY()
+	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
+	TMap<uint32, FHorizontalActorMovementData> ActorHorizontalMovementMap;
 
 public:
 	// Sets default values for this component's properties
 	UDynamicTargetingComponent();
 
+	// TODO: I don't really have anything in store for Valid collisions. Maybe in the future we could use them for something
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Channels")
-	TArray<TEnumAsByte<EObjectTypeQuery>> ValidCollisionTraces; // Pawn by defualt
+	TArray<TEnumAsByte<EObjectTypeQuery>> ValidCollisionTraces;
+	// Use these channels if the targeted actor is behind one of them
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Collision Channels")
 	TArray<TEnumAsByte<EObjectTypeQuery>> BlockCollisionTraces;
-
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
+	float MaxDistanceToTargetSquared = MAX_DISTANCE_TO_TARGET_SQUARED;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Dynamic Targeting Properties")
+	float MinDistanceToTargetSquared = MIN_DISTANCE_TO_TARGET_SQUARED;
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
-	void InitializeArrowComponent(UArrowComponent* const ArrowComponent);
+
+	// Camera Lock
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void DisableCameraLock();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	void EnableCameraLock();
-	AActor* GetSelectedActor() const;
-	bool IsValidActorSelected() const;
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	void ToggleCameraLock();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	AActor* FindClosestTargetOnScreen();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	TArray<AActor*> FindAllActorsOnScreen();
+
+	//Strafe
+	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
+	void ToggleStrafeAssist(bool bDecision); // Disallow toggling of strafe data if manual targeting is enabled
+	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")
+	void InvalidateStrafeAssist();
+
+	// Getters
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	inline AActor* GetSelectedActor() const { return SelectedActor; };
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	inline bool IsValidActorSelected() const { return SelectedActor; };
 };
