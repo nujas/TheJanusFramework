@@ -70,6 +70,8 @@ public:
 
 static const float MAX_DISTANCE_TO_TARGET_SQUARED = 6250000.f;
 static const float MIN_DISTANCE_TO_TARGET_SQUARED = 2500.f;
+static const float START_AXIS_THRESHOLD = 1.5f;
+static const float ARROW_ROT_THRESHOLD = 165.f;
 
 UCLASS(ClassGroup = (NujasCombat), meta = (BlueprintSpawnableComponent))
 class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
@@ -80,13 +82,12 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	inline void SaveRotationSettings();
 	// Restore player rotation settings once no longer targeting
 	inline void RestoreRotationSettings();
-	// retrieve the arrow component for debugging
-	inline void InitializeArrowComponent(UArrowComponent* const ArrowComponent);
 	// update the character rotation config data to face the targeted actor
 	void UpdateFaceTargetConfig();
 	// Check if the target blocked or dead. If true, simply disable targeting
 	void CheckupTargetedActor();
-
+	// retrieve the arrow component for debugging
+	inline void InitializeArrowComponent(UArrowComponent* const ArrowComp);
 	// call this "sudo" every frame to orientate the character camera towards the selected actor
 	void UpdateCameraLock();
 	// Use this to collect strafe data for the player to align the camera towards the enemies without moving the joystick while strafing
@@ -125,6 +126,8 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	UPROPERTY()
 	// when you look through the strafed actors, it shouldn't matter if they are "targetable", you just want to keep them in sight
 	TMap<uint32, FHorizontalActorMovementData> ActorHorizontalMovementMap;
+	UPROPERTY()
+	uint32 LastActorId = 0;
 
 public:
 	// Sets default values for this component's properties
@@ -157,6 +160,8 @@ public:
 	AActor* FindClosestTargetOnScreen();
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	TArray<AActor*> FindAllActorsOnScreen();
+	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
+	void FindTargetWithAxisInput(float AxisInput);
 
 	//Strafe
 	UFUNCTION(BlueprintCallable, Category="Dynamic Strafe Targeting")

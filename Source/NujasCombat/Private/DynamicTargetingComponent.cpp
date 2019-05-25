@@ -54,10 +54,10 @@ void UDynamicTargetingComponent::BeginPlay()
 	}
 }
 
-void UDynamicTargetingComponent::InitializeArrowComponent(UArrowComponent* const ArrowComponent)
+void UDynamicTargetingComponent::InitializeArrowComponent(UArrowComponent* const ArrowComp)
 {
-	this->ArrowComponent = ArrowComponent;
-	this->ArrowComponent->bAbsoluteRotation = true;
+	ArrowComponent = ArrowComp;
+	ArrowComponent->bAbsoluteRotation = true;
 }
 
 void UDynamicTargetingComponent::UpdateFaceTargetConfig()
@@ -117,35 +117,62 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
 	// collect all of the enemies on screen
-	ActorsOnScreen = FindAllActorsOnScreen();
-	// project their world space position into 2D screen space and take the X
-	float SummarizedSpeeds = 0.f;
-	for (AActor*& OnScreenActor : ActorsOnScreen)
+	//ActorsOnScreen = FindAllActorsOnScreen();
+	float SummarizedSpeed = 0.f;
+	if(AActor* const ClosestActor = FindClosestTargetOnScreen())
 	{
+		if(IsTraceBlocked(ClosestActor))
+			return;
 		bool bSuccessfulProjection = false;
-		const FVector2D ActorScreenSpacePos = UViewportUtility::GetActorOnScreenPosition(OnScreenActor, PlayerController, bSuccessfulProjection);
-		if(!bSuccessfulProjection) continue;
-		// if the actor's X is not present in the map, add it. 
-		// The first time an enemy is added to the map it will not be taken into account
-		const uint32& ActorID = OnScreenActor->GetUniqueID();
+		// project their world space position into 2D screen space and take the X
+		const FVector2D ActorScreenSpacePos = UViewportUtility::GetActorOnScreenPosition(ClosestActor, PlayerController, bSuccessfulProjection);
+		const uint32& ActorID = ClosestActor->GetUniqueID();
 		if(ActorHorizontalMovementMap.Contains(ActorID))
 		{
+			FVector2D ScreenSize;
+			UViewportUtility::GetViewportSize(PlayerController, ScreenSize);
+			const float SizeXFloated = ScreenSize.X / 2.f;
+
 			FHorizontalActorMovementData& MovementData = ActorHorizontalMovementMap[ActorID];
 			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
 			const float CurrentSpeed = ActorScreenSpacePos.X - MovementData.LastKnownXPosition;
+			
+			const float CurrentOffset = FMath::Abs(SizeXFloated - ActorScreenSpacePos.X);
+			const float PreviousOffset = FMath::Abs(SizeXFloated - MovementData.LastKnownXPosition);
+
 			MovementData.LastKnownXPosition = ActorScreenSpacePos.X;
 			MovementData.LastUpdatedXSpeed = CurrentSpeed;
-			// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
-			SummarizedSpeeds += CurrentSpeed;
+			if(LastActorId == ActorID && CurrentOffset > PreviousOffset && FMath::Abs(CurrentSpeed) < 20.f)
+			{
+				// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
+				SummarizedSpeed += CurrentSpeed;
+			}
+			else
+			{
+				LastActorId = ActorID;
+			}
 		}
 		else
 		{
 			ActorHorizontalMovementMap.Add(ActorID, FHorizontalActorMovementData(ActorScreenSpacePos.X));
+			LastActorId = ActorID;
 		}
 	}
+
+	// instead of taking every character into account, take only one based on priority
+	// How to determine the most important enemy
+	// how far away is it from the player
+	// how far away is it from the center of the screen
+	// 
+	// The camera should ignore an enemy unless the new position is moving away from the center
+	// 
+	// OR
+	//
+	// Collect the average screen space positions and interpolate towards it
+
 	// apply the summarized rotation to the yaw of the player via interpolation
 	FRotator ControllerRotation = PlayerController->GetControlRotation();
-	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeeds, FApp::GetDeltaTime(), 10.f);
+	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeed, FApp::GetDeltaTime(), 13.5f);
 	PlayerController->SetControlRotation(ControllerRotation);
 }
 
@@ -287,10 +314,43 @@ TArray<AActor*> UDynamicTargetingComponent::FindAllActorsOnScreen()
 	return FoundActors;
 }
 
+void UDynamicTargetingComponent::FindTargetWithAxisInput(float AxisInput)
+{
+	if(!ArrowComponent || !SelectedActor || FMath::Abs(AxisInput) > START_AXIS_THRESHOLD)
+		return;
+	TArray<AActor*> AllActors = FindAllActorsOnScreen();
+	bool bSuccessfulProjection = false;
+	const FVector2D SelectedActorScreenPosition = UViewportUtility::GetActorOnScreenPosition(SelectedActor, PlayerController, bSuccessfulProjection);
+	float ClosestDistanceToSelectedActor = BIG_NUMBER;
+	AActor* ClosestActor = nullptr;
+	for (AActor*& Actor : AllActors)
+	{
+		if(Actor == SelectedActor)
+			continue;
+
+		const FVector2D ScreenPosition = UViewportUtility::GetActorOnScreenPosition(Actor, PlayerController, bSuccessfulProjection);
+		const float DistanceFromSelectedActor = SelectedActorScreenPosition.X - ScreenPosition.X;
+		if(FMath::Sign(AxisInput) == FMath::Sign(DistanceFromSelectedActor))
+		{
+			const float AbsDistanceFromSelectedActor = FMath::Abs(DistanceFromSelectedActor);
+			if(AbsDistanceFromSelectedActor < ClosestDistanceToSelectedActor)
+			{
+				ClosestDistanceToSelectedActor = AbsDistanceFromSelectedActor;
+				ClosestActor = Actor;
+			}
+		}
+	}
+	if(ClosestActor)
+		SelectedActor = ClosestActor;
+}
+
 void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
 {
-	if(SelectedActor || !Owner) 
+	if(SelectedActor || !Owner)
+	{
+		InvalidateStrafeAssist();
 		return;
+	}
 	if(bDecision && !StrafeAssistHandle.IsValid())
 	{
 		Owner->GetWorldTimerManager().SetTimer
@@ -314,5 +374,6 @@ void UDynamicTargetingComponent::InvalidateStrafeAssist()
 	{
 		Owner->GetWorldTimerManager().ClearTimer(StrafeAssistHandle);
 		ActorHorizontalMovementMap.Empty();
+		LastActorId = 0;
 	}
 }
