@@ -316,32 +316,59 @@ TArray<AActor*> UDynamicTargetingComponent::FindAllActorsOnScreen()
 
 void UDynamicTargetingComponent::FindTargetWithAxisInput(float AxisInput)
 {
-	if(!ArrowComponent || !SelectedActor || FMath::Abs(AxisInput) > START_AXIS_THRESHOLD)
-		return;
-	TArray<AActor*> AllActors = FindAllActorsOnScreen();
-	bool bSuccessfulProjection = false;
-	const FVector2D SelectedActorScreenPosition = UViewportUtility::GetActorOnScreenPosition(SelectedActor, PlayerController, bSuccessfulProjection);
-	float ClosestDistanceToSelectedActor = BIG_NUMBER;
-	AActor* ClosestActor = nullptr;
-	for (AActor*& Actor : AllActors)
+	if(!ArrowComponent || !SelectedActor || FMath::Abs(AxisInput) < START_AXIS_THRESHOLD)
 	{
-		if(Actor == SelectedActor)
-			continue;
+		AxisCache = 0.f;
+		return;
+	}
+	if(AxisCache * AxisInput > 0.f)
+		return;
+	AxisCache = AxisInput;
+	TArray<AActor*> AllActors = FindAllActorsOnScreen();
 
-		const FVector2D ScreenPosition = UViewportUtility::GetActorOnScreenPosition(Actor, PlayerController, bSuccessfulProjection);
-		const float DistanceFromSelectedActor = SelectedActorScreenPosition.X - ScreenPosition.X;
-		if(FMath::Sign(AxisInput) == FMath::Sign(DistanceFromSelectedActor))
+	bool bSuccessfulProjection = false;
+	AActor* FoundNextTarget = nullptr;
+	const FVector2D OwnerScreenProjection = UViewportUtility::GetActorOnScreenPosition(Owner, PlayerController, bSuccessfulProjection);
+	float ClosestEnemyDistance = NAN;
+	float ClosestEnemyX = NAN;
+	if(!bSuccessfulProjection) return;
+
+	for (AActor*& PotentialTarget : AllActors)
+	{
+
+		if(PotentialTarget == SelectedActor)
+			continue;
+		const float DistSquared = FVector::DistSquared(PotentialTarget->GetActorLocation(), Owner->GetActorLocation());
+		if(DistSquared > MaxDistanceToTargetSquared || DistSquared < MinDistanceToTargetSquared)
+			continue;
+		// no need to check if projection worked, because the target has already entered into the onscreen targets list
+		const FVector2D PotentialTargetScreenPosition = UViewportUtility::GetActorOnScreenPosition(SelectedActor, PlayerController, bSuccessfulProjection);
+		const float XOffset = PotentialTargetScreenPosition.X - OwnerScreenProjection.X;
+		if(AxisInput * XOffset > 0.f)
 		{
-			const float AbsDistanceFromSelectedActor = FMath::Abs(DistanceFromSelectedActor);
-			if(AbsDistanceFromSelectedActor < ClosestDistanceToSelectedActor)
+			if(FoundNextTarget)
 			{
-				ClosestDistanceToSelectedActor = AbsDistanceFromSelectedActor;
-				ClosestActor = Actor;
+				if(DistSquared < ClosestEnemyDistance || FMath::Abs(XOffset) < FMath::Abs(ClosestEnemyX))
+				{
+					ClosestEnemyDistance = DistSquared;
+					ClosestEnemyX = XOffset;
+					FoundNextTarget = PotentialTarget;
+				}
+			}
+			else
+			{
+				ClosestEnemyDistance = DistSquared;
+				ClosestEnemyX = XOffset;
+				FoundNextTarget = PotentialTarget;
 			}
 		}
 	}
-	if(ClosestActor)
-		SelectedActor = ClosestActor;
+	if(FoundNextTarget)
+	{
+		DisableCameraLock();
+		SelectedActor = FoundNextTarget;
+		EnableCameraLock();
+	}
 }
 
 void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
