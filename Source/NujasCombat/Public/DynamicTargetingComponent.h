@@ -70,7 +70,7 @@ public:
 
 static const float MAX_DISTANCE_TO_TARGET_SQUARED = 6250000.f;
 static const float MIN_DISTANCE_TO_TARGET_SQUARED = 2500.f;
-static const float START_AXIS_THRESHOLD = 1.5f;
+static const float START_AXIS_THRESHOLD = 0.75f;
 static const float ARROW_ROT_THRESHOLD = 165.f;
 
 UCLASS(ClassGroup = (NujasCombat), meta = (BlueprintSpawnableComponent))
@@ -128,6 +128,9 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	TMap<uint32, FHorizontalActorMovementData> ActorHorizontalMovementMap;
 	UPROPERTY()
 	uint32 LastActorId = 0;
+
+	UPROPERTY()
+	float AxisCache = NAN;
 
 public:
 	// Sets default values for this component's properties
