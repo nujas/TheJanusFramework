@@ -40,7 +40,7 @@ struct FHorizontalActorMovementData
 };
 
 UINTERFACE(Blueprintable)
-class NUJASCOMBAT_API UTargetable : public UInterface
+class NUJASCOMBAT_API UTargetable : public UInterface // TODO: needs to live inside the combat globals .h
 {
 	GENERATED_BODY()
 };
