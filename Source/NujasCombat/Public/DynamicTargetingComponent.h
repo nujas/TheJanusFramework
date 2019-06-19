@@ -39,28 +39,6 @@ struct FHorizontalActorMovementData
 	float LastUpdatedXSpeed = NAN;
 };
 
-UINTERFACE(Blueprintable)
-class NUJASCOMBAT_API UTargetable : public UInterface // TODO: needs to live inside the combat globals .h
-{
-	GENERATED_BODY()
-};
-class ITargetable
-{
-	GENERATED_BODY()
-public:
-	/* Call on Actor that got selected by the targeting component */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Dynamic Targeting")
-	bool OnSelected();
-
-	/* Call on Actor that got deselected by the targeting component */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Dynamic Targeting")
-	bool OnDeselected();
-
-	/* Call on Actor if you want to make sure that the actor is targetable */
-	UFUNCTION(BlueprintImplementableEvent, Category = "Dynamic Targeting")
-	bool IsTargetable();
-};
-
 /*
  * Component to aim the player at particular targets
  * For Debug purposes, it is desirable that the actor that owns this component
