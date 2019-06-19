@@ -6,6 +6,7 @@
 #include "Core/Public/Misc/App.h"
 #include "ViewportUtility.h"
 #include "Kismet/GameplayStatics.h"
+#include "NujasCombatGlobals.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 void UDynamicTargetingComponent::SaveRotationSettings()
