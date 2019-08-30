@@ -154,5 +154,5 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
 	inline AActor* GetSelectedActor() const { return SelectedActor; };
 	UFUNCTION(BlueprintCallable, Category="Dynamic Targeting")
-	inline bool IsValidActorSelected() const { return SelectedActor; };
+	inline bool IsValidActorSelected() const { return !!SelectedActor; };
 };
