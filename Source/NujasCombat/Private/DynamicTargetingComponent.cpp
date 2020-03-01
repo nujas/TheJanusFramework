@@ -7,7 +7,9 @@
 #include "ViewportUtility.h"
 #include "Kismet/GameplayStatics.h"
 #include "NujasCombatGlobals.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "DrawDebugHelpers.h"
 
 void UDynamicTargetingComponent::SaveRotationSettings()
 {
@@ -118,7 +120,92 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
 	// collect all of the enemies on screen
-	//ActorsOnScreen = FindAllActorsOnScreen();
+	ActorsOnScreen = FindAllActorsOnScreen();
+	FVector CamLocation = GetWorld()->GetFirstPlayerController()->PlayerCameraManager->GetCameraLocation();
+	FVector CamForward = PlayerController->GetControlRotation().Vector();
+	// we want to treat it flat on the surface
+
+	FVector EnemyLocation;
+	FRotator CamRotationToTarget;
+	FRotator FinalResult;
+	bool bIterated = false;
+	for (AActor*& TargetableActor : ActorsOnScreen)
+	{
+		EnemyLocation = TargetableActor->GetActorLocation();
+
+
+		// yes the Z is up for vectors
+		FVector DirFromCamToEnemy = EnemyLocation - CamLocation;
+		float camZ = CamLocation.Z;
+		CamLocation.Z = 0; // added this!!!
+		DirFromCamToEnemy.Z = 0; // added this!!!
+		CamForward.Z = 0;
+		FVector ProjectedOffset = UKismetMathLibrary::ProjectVectorOnToVector(DirFromCamToEnemy, CamForward + CamLocation); // CamForward + CamLocation!!!
+		FVector CamOffset = ProjectedOffset - DirFromCamToEnemy;
+		//DrawDebugLine(GetWorld(), CamLocation, (CamForward * 50) + CamLocation, FColor::Blue, false, .5f, 0, 5.f);
+		
+		CamLocation.Z = camZ;
+
+		FVector RightVec = FVector::CrossProduct(FVector::UpVector, CamForward);
+
+		//float angle = FVector::DotProduct(RightVec, DirFromCamToEnemy);
+		//if (angle > 0)
+		//	continue;
+
+		FVector EnemyVelocity = TargetableActor->GetVelocity();
+		EnemyVelocity.Normalize();
+		FVector OurVelocity = Owner->GetVelocity();
+		OurVelocity.Normalize();
+
+		DirFromCamToEnemy.Z = OurVelocity.Z;
+		DirFromCamToEnemy.Normalize();
+		float angle = FVector::DotProduct(DirFromCamToEnemy, OurVelocity);
+		if(angle > 0.25f) 
+			continue;
+		DirFromCamToEnemy.Normalize();
+		float angle2 = FVector::DotProduct(RightVec, DirFromCamToEnemy);
+		/*
+		if(angle2 < 0.1f && angle2 > 0.1f) 
+		{
+			// to prevent flip flopping just focus directly on the target
+
+		}
+		*/
+
+		DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation - CamOffset, FColor::Red, false, .1f, 0, 5.f);
+		CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, EnemyLocation - CamOffset); // change to plus
+		/*
+		if(angle2 >= 0) 
+		{
+			DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation - CamOffset, FColor::Red, false, .1f, 0, 5.f);
+			// DrawDebugLine(GetWorld(), RightVec + CamLocation, DirFromCamToEnemy + CamLocation, FColor::Blue, true, .5f, 0, 5.f);
+			CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation,  EnemyLocation - CamOffset); // change to plus
+		}
+		else 
+		{
+			DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation + CamOffset, FColor::Red, false, .1f, 0, 5.f);
+			// DrawDebugLine(GetWorld(), RightVec + CamLocation, DirFromCamToEnemy + CamLocation, FColor::Blue, true, .5f, 0, 5.f);
+			CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, EnemyLocation + CamOffset); // change to plus
+		}
+		*/
+		
+		
+		bIterated = true;
+	}
+	if(!bIterated)
+		return;
+
+	//PlayerController->SetControlRotation(CamRotationToTarget);
+	// magic number
+	FRotator ControllerRotation = PlayerController->GetControlRotation();
+
+	CamRotationToTarget.Pitch = ControllerRotation.Pitch;
+	CamRotationToTarget.Roll = ControllerRotation.Roll;
+	//UKismetMathLibrary::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), 15.f);
+	//ControllerRotation.Yaw = FMath::FInterpConstantTo(ControllerRotation.Yaw, CamRotationToTarget.Yaw, FApp::GetDeltaTime(), 15.f);
+	PlayerController->SetControlRotation(UKismetMathLibrary::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), 150.f));
+
+	/*
 	float SummarizedSpeed = 0.f;
 	if(AActor* const ClosestActor = FindClosestTargetOnScreen())
 	{
@@ -159,6 +246,7 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 			LastActorId = ActorID;
 		}
 	}
+	*/
 
 	// instead of taking every character into account, take only one based on priority
 	// How to determine the most important enemy
@@ -172,9 +260,12 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 	// Collect the average screen space positions and interpolate towards it
 
 	// apply the summarized rotation to the yaw of the player via interpolation
+
+	/*
 	FRotator ControllerRotation = PlayerController->GetControlRotation();
 	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeed, FApp::GetDeltaTime(), 13.5f);
 	PlayerController->SetControlRotation(ControllerRotation);
+	*/
 }
 
 bool UDynamicTargetingComponent::IsTraceBlocked(const AActor* Target) const
