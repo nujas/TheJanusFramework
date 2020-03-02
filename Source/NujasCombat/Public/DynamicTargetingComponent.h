@@ -120,7 +120,10 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	FVector CamOffset;
 	UPROPERTY()
 	// the maximum length that the strafe offset can have
-	float maxLength = 0.f;
+	float MaxLength = 0.f;
+	UPROPERTY()
+	// how fast should the assist system move the camera
+	float AimAssistSpeed = 150.f;
 
 	/* EXPERIMENTAL END */
 

@@ -7,7 +7,6 @@
 #include "ViewportUtility.h"
 #include "Kismet/GameplayStatics.h"
 #include "NujasCombatGlobals.h"
-#include "Kismet/KismetMathLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
 
@@ -142,16 +141,16 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 		FVector DirFromCamToEnemy = EnemyLocation - CamLocation;
 		DirFromCamToEnemy.Z = 0;
 		CamForward.Z = 0;
-		FVector ProjectedOffset = UKismetMathLibrary::ProjectVectorOnToVector(DirFromCamToEnemy, CamForward);
+		FVector ProjectedOffset = DirFromCamToEnemy.ProjectOnTo(CamForward);
 		CamOffset = ProjectedOffset - DirFromCamToEnemy;
 		if(!bCalculatedOffsetOnce) 
 		{
-			maxLength = CamOffset.Size();
+			MaxLength = CamOffset.Size();
 			bCalculatedOffsetOnce = true;
 		}
 		else 
 		{
-			CamOffset = UKismetMathLibrary::ClampVectorSize(CamOffset, maxLength, maxLength);
+			CamOffset = CamOffset.GetClampedToSize(MaxLength, MaxLength);
 		}
 		CamOffset.Z = 0;
 		FVector FinalTarget = EnemyLocation + CamOffset;
@@ -166,7 +165,9 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 		DrawDebugLine(GetWorld(), CamLocation, FinalTarget, FColor::Red, false, .01f, 0, 5.f);
 		DrawDebugLine(GetWorld(), EnemyLocation, FinalTarget, FColor::Blue, false, .01f, 0, 5.f);
 		DrawDebugLine(GetWorld(), CamLocation, EnemyLocation, FColor::Blue, false, .01f, 0, 5.f);
-		CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, FinalTarget); // change to plus
+		
+		// Make a look at rotation
+		CamRotationToTarget = FRotationMatrix::MakeFromX(FinalTarget - CamLocation).Rotator();
 		
 		/* TODO for a future PR
 		if(angle2 >= 0) 
@@ -192,7 +193,8 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 	FRotator ControllerRotation = PlayerController->GetControlRotation();
 	CamRotationToTarget.Pitch = ControllerRotation.Pitch;
 	CamRotationToTarget.Roll = ControllerRotation.Roll;
-	PlayerController->SetControlRotation(UKismetMathLibrary::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), 150.f));
+	FRotator NewControlRotation = FMath::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), AimAssistSpeed);
+	PlayerController->SetControlRotation(NewControlRotation);
 }
 
 bool UDynamicTargetingComponent::IsTraceBlocked(const AActor* Target) const
