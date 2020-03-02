@@ -120,61 +120,55 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
 	// collect all of the enemies on screen
-	ActorsOnScreen = FindAllActorsOnScreen();
+	AActor* TargetableActor = FindClosestTargetOnScreen();
+	if(!TargetableActor)
+		return;
+
 	FVector CamLocation = GetWorld()->GetFirstPlayerController()->PlayerCameraManager->GetCameraLocation();
 	FVector CamForward = PlayerController->GetControlRotation().Vector();
-	// we want to treat it flat on the surface
 
 	FVector EnemyLocation;
 	FRotator CamRotationToTarget;
 	FRotator FinalResult;
-	bool bIterated = false;
-	for (AActor*& TargetableActor : ActorsOnScreen)
-	{
+
+	// TODO: For future PR
+	//bool bIterated = false;
+	//for (AActor*& TargetableActor : ActorsOnScreen)
+	//{
 		EnemyLocation = TargetableActor->GetActorLocation();
 
-
 		// yes the Z is up for vectors
-		FVector DirFromCamToEnemy = EnemyLocation - CamLocation;
-		float camZ = CamLocation.Z;
-		CamLocation.Z = 0; // added this!!!
-		DirFromCamToEnemy.Z = 0; // added this!!!
-		CamForward.Z = 0;
-		FVector ProjectedOffset = UKismetMathLibrary::ProjectVectorOnToVector(DirFromCamToEnemy, CamForward + CamLocation); // CamForward + CamLocation!!!
-		FVector CamOffset = ProjectedOffset - DirFromCamToEnemy;
-		//DrawDebugLine(GetWorld(), CamLocation, (CamForward * 50) + CamLocation, FColor::Blue, false, .5f, 0, 5.f);
-		
-		CamLocation.Z = camZ;
-
 		FVector RightVec = FVector::CrossProduct(FVector::UpVector, CamForward);
-
-		//float angle = FVector::DotProduct(RightVec, DirFromCamToEnemy);
-		//if (angle > 0)
-		//	continue;
-
-		FVector EnemyVelocity = TargetableActor->GetVelocity();
-		EnemyVelocity.Normalize();
-		FVector OurVelocity = Owner->GetVelocity();
-		OurVelocity.Normalize();
-
-		DirFromCamToEnemy.Z = OurVelocity.Z;
-		DirFromCamToEnemy.Normalize();
-		float angle = FVector::DotProduct(DirFromCamToEnemy, OurVelocity);
-		if(angle > 0.25f) 
-			continue;
-		DirFromCamToEnemy.Normalize();
-		float angle2 = FVector::DotProduct(RightVec, DirFromCamToEnemy);
-		/*
-		if(angle2 < 0.1f && angle2 > 0.1f) 
+		FVector DirFromCamToEnemy = EnemyLocation - CamLocation;
+		DirFromCamToEnemy.Z = 0;
+		CamForward.Z = 0;
+		FVector ProjectedOffset = UKismetMathLibrary::ProjectVectorOnToVector(DirFromCamToEnemy, CamForward);
+		CamOffset = ProjectedOffset - DirFromCamToEnemy;
+		if(!bCalculatedOffsetOnce) 
 		{
-			// to prevent flip flopping just focus directly on the target
-
+			maxLength = CamOffset.Size();
+			bCalculatedOffsetOnce = true;
 		}
-		*/
+		else 
+		{
+			CamOffset = UKismetMathLibrary::ClampVectorSize(CamOffset, maxLength, maxLength);
+		}
+		CamOffset.Z = 0;
+		FVector FinalTarget = EnemyLocation + CamOffset;
 
-		DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation - CamOffset, FColor::Red, false, .1f, 0, 5.f);
-		CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, EnemyLocation - CamOffset); // change to plus
-		/*
+		// TODO: for a future PR
+		//EnemyLocation = TargetableActor->GetActorLocation();
+		//FVector EnemyVelocity = TargetableActor->GetVelocity();
+		//EnemyVelocity.Normalize();
+		//CamOffset += EnemyVelocity * 10.f; // + closeness * 5.f;
+
+		CamLocation.Z = FinalTarget.Z;
+		DrawDebugLine(GetWorld(), CamLocation, FinalTarget, FColor::Red, false, .01f, 0, 5.f);
+		DrawDebugLine(GetWorld(), EnemyLocation, FinalTarget, FColor::Blue, false, .01f, 0, 5.f);
+		DrawDebugLine(GetWorld(), CamLocation, EnemyLocation, FColor::Blue, false, .01f, 0, 5.f);
+		CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, FinalTarget); // change to plus
+		
+		/* TODO for a future PR
 		if(angle2 >= 0) 
 		{
 			DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation - CamOffset, FColor::Red, false, .1f, 0, 5.f);
@@ -190,82 +184,15 @@ void UDynamicTargetingComponent::UpdateStrafeAssist()
 		*/
 		
 		
-		bIterated = true;
-	}
-	if(!bIterated)
-		return;
+		// bIterated = true;
+	// }
+	// if(!bIterated)
+		// return;
 
-	//PlayerController->SetControlRotation(CamRotationToTarget);
-	// magic number
 	FRotator ControllerRotation = PlayerController->GetControlRotation();
-
 	CamRotationToTarget.Pitch = ControllerRotation.Pitch;
 	CamRotationToTarget.Roll = ControllerRotation.Roll;
-	//UKismetMathLibrary::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), 15.f);
-	//ControllerRotation.Yaw = FMath::FInterpConstantTo(ControllerRotation.Yaw, CamRotationToTarget.Yaw, FApp::GetDeltaTime(), 15.f);
 	PlayerController->SetControlRotation(UKismetMathLibrary::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), 150.f));
-
-	/*
-	float SummarizedSpeed = 0.f;
-	if(AActor* const ClosestActor = FindClosestTargetOnScreen())
-	{
-		if(IsTraceBlocked(ClosestActor))
-			return;
-		bool bSuccessfulProjection = false;
-		// project their world space position into 2D screen space and take the X
-		const FVector2D ActorScreenSpacePos = UViewportUtility::GetActorOnScreenPosition(ClosestActor, PlayerController, bSuccessfulProjection);
-		const uint32& ActorID = ClosestActor->GetUniqueID();
-		if(ActorHorizontalMovementMap.Contains(ActorID))
-		{
-			FVector2D ScreenSize;
-			UViewportUtility::GetViewportSize(PlayerController, ScreenSize);
-			const float SizeXFloated = ScreenSize.X / 2.f;
-
-			FHorizontalActorMovementData& MovementData = ActorHorizontalMovementMap[ActorID];
-			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
-			const float CurrentSpeed = ActorScreenSpacePos.X - MovementData.LastKnownXPosition;
-			
-			const float CurrentOffset = FMath::Abs(SizeXFloated - ActorScreenSpacePos.X);
-			const float PreviousOffset = FMath::Abs(SizeXFloated - MovementData.LastKnownXPosition);
-
-			MovementData.LastKnownXPosition = ActorScreenSpacePos.X;
-			MovementData.LastUpdatedXSpeed = CurrentSpeed;
-			if(LastActorId == ActorID && CurrentOffset > PreviousOffset && FMath::Abs(CurrentSpeed) < 20.f)
-			{
-				// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
-				SummarizedSpeed += CurrentSpeed;
-			}
-			else
-			{
-				LastActorId = ActorID;
-			}
-		}
-		else
-		{
-			ActorHorizontalMovementMap.Add(ActorID, FHorizontalActorMovementData(ActorScreenSpacePos.X));
-			LastActorId = ActorID;
-		}
-	}
-	*/
-
-	// instead of taking every character into account, take only one based on priority
-	// How to determine the most important enemy
-	// how far away is it from the player
-	// how far away is it from the center of the screen
-	// 
-	// The camera should ignore an enemy unless the new position is moving away from the center
-	// 
-	// OR
-	//
-	// Collect the average screen space positions and interpolate towards it
-
-	// apply the summarized rotation to the yaw of the player via interpolation
-
-	/*
-	FRotator ControllerRotation = PlayerController->GetControlRotation();
-	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeed, FApp::GetDeltaTime(), 13.5f);
-	PlayerController->SetControlRotation(ControllerRotation);
-	*/
 }
 
 bool UDynamicTargetingComponent::IsTraceBlocked(const AActor* Target) const
@@ -483,6 +410,7 @@ void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
 	}
 	else if(!bDecision)
 	{
+		bCalculatedOffsetOnce = false;
 		InvalidateStrafeAssist();
 	}
 }
