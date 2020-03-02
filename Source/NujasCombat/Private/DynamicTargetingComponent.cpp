@@ -8,6 +8,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "NujasCombatGlobals.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "DrawDebugHelpers.h"
 
 void UDynamicTargetingComponent::SaveRotationSettings()
 {
@@ -118,63 +119,82 @@ void UDynamicTargetingComponent::UpdateCameraLock()
 void UDynamicTargetingComponent::UpdateStrafeAssist()
 {
 	// collect all of the enemies on screen
-	//ActorsOnScreen = FindAllActorsOnScreen();
-	float SummarizedSpeed = 0.f;
-	if(AActor* const ClosestActor = FindClosestTargetOnScreen())
-	{
-		if(IsTraceBlocked(ClosestActor))
-			return;
-		bool bSuccessfulProjection = false;
-		// project their world space position into 2D screen space and take the X
-		const FVector2D ActorScreenSpacePos = UViewportUtility::GetActorOnScreenPosition(ClosestActor, PlayerController, bSuccessfulProjection);
-		const uint32& ActorID = ClosestActor->GetUniqueID();
-		if(ActorHorizontalMovementMap.Contains(ActorID))
+	AActor* TargetableActor = FindClosestTargetOnScreen();
+	if(!TargetableActor)
+		return;
+
+	FVector CamLocation = GetWorld()->GetFirstPlayerController()->PlayerCameraManager->GetCameraLocation();
+	FVector CamForward = PlayerController->GetControlRotation().Vector();
+
+	FVector EnemyLocation;
+	FRotator CamRotationToTarget;
+	FRotator FinalResult;
+
+	// TODO: For future PR
+	//bool bIterated = false;
+	//for (AActor*& TargetableActor : ActorsOnScreen)
+	//{
+		EnemyLocation = TargetableActor->GetActorLocation();
+
+		// yes the Z is up for vectors
+		FVector RightVec = FVector::CrossProduct(FVector::UpVector, CamForward);
+		FVector DirFromCamToEnemy = EnemyLocation - CamLocation;
+		DirFromCamToEnemy.Z = 0;
+		CamForward.Z = 0;
+		FVector ProjectedOffset = DirFromCamToEnemy.ProjectOnTo(CamForward);
+		CamOffset = ProjectedOffset - DirFromCamToEnemy;
+		if(!bCalculatedOffsetOnce) 
 		{
-			FVector2D ScreenSize;
-			UViewportUtility::GetViewportSize(PlayerController, ScreenSize);
-			const float SizeXFloated = ScreenSize.X / 2.f;
-
-			FHorizontalActorMovementData& MovementData = ActorHorizontalMovementMap[ActorID];
-			// if a valid entry in the map exists -> take the difference in the last known positions and save the speed
-			const float CurrentSpeed = ActorScreenSpacePos.X - MovementData.LastKnownXPosition;
-			
-			const float CurrentOffset = FMath::Abs(SizeXFloated - ActorScreenSpacePos.X);
-			const float PreviousOffset = FMath::Abs(SizeXFloated - MovementData.LastKnownXPosition);
-
-			MovementData.LastKnownXPosition = ActorScreenSpacePos.X;
-			MovementData.LastUpdatedXSpeed = CurrentSpeed;
-			if(LastActorId == ActorID && CurrentOffset > PreviousOffset && FMath::Abs(CurrentSpeed) < 20.f)
-			{
-				// every speed that is not NAN and exists in the map will be accounted for and applied to the player's yaw
-				SummarizedSpeed += CurrentSpeed;
-			}
-			else
-			{
-				LastActorId = ActorID;
-			}
+			MaxLength = CamOffset.Size();
+			bCalculatedOffsetOnce = true;
 		}
-		else
+		else 
 		{
-			ActorHorizontalMovementMap.Add(ActorID, FHorizontalActorMovementData(ActorScreenSpacePos.X));
-			LastActorId = ActorID;
+			CamOffset = CamOffset.GetClampedToSize(MaxLength, MaxLength);
 		}
-	}
+		CamOffset.Z = 0;
+		FVector FinalTarget = EnemyLocation + CamOffset;
 
-	// instead of taking every character into account, take only one based on priority
-	// How to determine the most important enemy
-	// how far away is it from the player
-	// how far away is it from the center of the screen
-	// 
-	// The camera should ignore an enemy unless the new position is moving away from the center
-	// 
-	// OR
-	//
-	// Collect the average screen space positions and interpolate towards it
+		// TODO: for a future PR
+		//EnemyLocation = TargetableActor->GetActorLocation();
+		//FVector EnemyVelocity = TargetableActor->GetVelocity();
+		//EnemyVelocity.Normalize();
+		//CamOffset += EnemyVelocity * 10.f; // + closeness * 5.f;
 
-	// apply the summarized rotation to the yaw of the player via interpolation
+		CamLocation.Z = FinalTarget.Z;
+		DrawDebugLine(GetWorld(), CamLocation, FinalTarget, FColor::Red, false, .01f, 0, 5.f);
+		DrawDebugLine(GetWorld(), EnemyLocation, FinalTarget, FColor::Blue, false, .01f, 0, 5.f);
+		DrawDebugLine(GetWorld(), CamLocation, EnemyLocation, FColor::Blue, false, .01f, 0, 5.f);
+		
+		// Make a look at rotation
+		CamRotationToTarget = FRotationMatrix::MakeFromX(FinalTarget - CamLocation).Rotator();
+		
+		/* TODO for a future PR
+		if(angle2 >= 0) 
+		{
+			DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation - CamOffset, FColor::Red, false, .1f, 0, 5.f);
+			// DrawDebugLine(GetWorld(), RightVec + CamLocation, DirFromCamToEnemy + CamLocation, FColor::Blue, true, .5f, 0, 5.f);
+			CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation,  EnemyLocation - CamOffset); // change to plus
+		}
+		else 
+		{
+			DrawDebugLine(GetWorld(), EnemyLocation, EnemyLocation + CamOffset, FColor::Red, false, .1f, 0, 5.f);
+			// DrawDebugLine(GetWorld(), RightVec + CamLocation, DirFromCamToEnemy + CamLocation, FColor::Blue, true, .5f, 0, 5.f);
+			CamRotationToTarget = UKismetMathLibrary::FindLookAtRotation(CamLocation, EnemyLocation + CamOffset); // change to plus
+		}
+		*/
+		
+		
+		// bIterated = true;
+	// }
+	// if(!bIterated)
+		// return;
+
 	FRotator ControllerRotation = PlayerController->GetControlRotation();
-	ControllerRotation.Yaw = FMath::FInterpTo(ControllerRotation.Yaw, ControllerRotation.Yaw + SummarizedSpeed, FApp::GetDeltaTime(), 13.5f);
-	PlayerController->SetControlRotation(ControllerRotation);
+	CamRotationToTarget.Pitch = ControllerRotation.Pitch;
+	CamRotationToTarget.Roll = ControllerRotation.Roll;
+	FRotator NewControlRotation = FMath::RInterpTo(ControllerRotation, CamRotationToTarget, FApp::GetDeltaTime(), AimAssistSpeed);
+	PlayerController->SetControlRotation(NewControlRotation);
 }
 
 bool UDynamicTargetingComponent::IsTraceBlocked(const AActor* Target) const
@@ -392,6 +412,7 @@ void UDynamicTargetingComponent::ToggleStrafeAssist(bool bDecision)
 	}
 	else if(!bDecision)
 	{
+		bCalculatedOffsetOnce = false;
 		InvalidateStrafeAssist();
 	}
 }

@@ -110,6 +110,23 @@ class NUJASCOMBAT_API UDynamicTargetingComponent : public UActorComponent
 	UPROPERTY()
 	float AxisCache = NAN;
 
+	/* EXPERIMENTAL START */
+
+	UPROPERTY()
+	// this boolean is triggered the moment it calculates an offset. The offset should not change as we want to rotate as if we are pivoting around the enemy
+	bool bCalculatedOffsetOnce = false;
+	UPROPERTY()
+	// variable for storing the strafe assist camera offset target
+	FVector CamOffset;
+	UPROPERTY()
+	// the maximum length that the strafe offset can have
+	float MaxLength = 0.f;
+	UPROPERTY()
+	// how fast should the assist system move the camera
+	float AimAssistSpeed = 150.f;
+
+	/* EXPERIMENTAL END */
+
 public:
 	// Sets default values for this component's properties
 	UDynamicTargetingComponent();
