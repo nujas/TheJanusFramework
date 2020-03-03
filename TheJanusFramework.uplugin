@@ -38,6 +38,21 @@
 			"Name": "NujasCombat",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasAI",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasDebug",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NujasWidget",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }
